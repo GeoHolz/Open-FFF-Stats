@@ -4,6 +4,7 @@ Système dynamique permettant d'afficher les classements, calendriers et résult
 
 Ce projet utilise l'API `api-dofa.fff.fr` pour récupérer les données en temps réel.
 
+<img src="img/example.png" width="400" alt="Capture du classement">
 ---
 
 ## ✨ Fonctionnalités
