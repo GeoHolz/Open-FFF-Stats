@@ -13,7 +13,7 @@ if (!$configs) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi des Compétitions ESW</title>
+    <title>Suivi des Compétitions</title>
     <link rel="stylesheet" href="style.css">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -22,7 +22,7 @@ if (!$configs) {
 </head>
 <body>
     <div class="container">
-        <h1>⚽ Suivi des Compétitions ESW</h1>
+        <h1>⚽ Suivi des Compétitions</h1>
         <p>Bienvenue sur le portail de suivi des classements en temps réel, alimenté par les données officielles de la FFF.</p>
 
         <div class="links-grid">
@@ -46,6 +46,20 @@ if (!$configs) {
         </div>
         
         <p style="font-size: 0.85em; margin-top: 40px; color: #aaa;">Mise à jour automatique toutes les 4 heures.</p>
+    <div class="footer">
+    <p>
+        Propulsé par 
+        <a href="https://github.com/GeoHolz/Open-FFF-Stats/" target="_blank" style="display: inline-flex; align-items: center; text-decoration: none; color: #1a567d;">
+            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" 
+                 width="20" 
+                 height="20" 
+                 style="margin-right: 8px;" 
+                 alt="GitHub">
+            Open-FFF-Stats
+        </a> 
+        • Développé pour l'ES Weppes
+    </p>
+</div>
     </div>
 </body>
 </html>

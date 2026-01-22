@@ -151,7 +151,20 @@ $equipe_cible = $donnees['equipe_cible'];
             </tbody>
         </table>
     </div>
-
+<div class="footer">
+    <p>
+        Propulsé par 
+        <a href="https://github.com/GeoHolz/Open-FFF-Stats/" target="_blank" style="display: inline-flex; align-items: center; text-decoration: none; color: #1a567d;">
+            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" 
+                 width="20" 
+                 height="20" 
+                 style="margin-right: 8px;" 
+                 alt="GitHub">
+            Open-FFF-Stats
+        </a> 
+        • Développé pour l'ES Weppes
+    </p>
+</div>
     </div>
 </body>
 </html>

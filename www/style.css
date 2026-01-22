@@ -280,3 +280,27 @@ tr[style*="background-color: #f0f0f0;"] .sticky-col.data {
     visibility: visible;
     opacity: 1;
 }
+/* Style du Footer */
+.footer {
+    margin-top: 50px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+    font-size: 0.9em;
+    color: #777;
+}
+
+.footer a {
+    color: #1a567d;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
+
+.github-icon {
+    vertical-align: middle;
+    margin-right: 5px;
+    width: 18px;
+}
