@@ -1,0 +1,24 @@
+{
+    "u10": {
+        "titre": "Classement U10 - Poule N",
+        "equipe_cible": "MON EQUIPE",
+        "api": {
+            "compet_id": "XXXXX",
+            "phase_id": "1",
+            "poule_id": "14",
+            "date_start": "2025-09-01",
+            "date_end": "2026-02-01"
+        }
+    },
+    "u11": {
+        "titre": "Classement U11 - Poule K",
+        "equipe_cible": "MON EQUIPE",
+        "api": {
+            "compet_id": "XXXXX",
+            "phase_id": "1",
+            "poule_id": "11",
+            "date_start": "2025-09-01",
+            "date_end": "2026-02-01"
+        }
+    }
+}

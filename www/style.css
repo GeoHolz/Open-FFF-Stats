@@ -1,0 +1,282 @@
+/*
+====================================
+1. Styles Généraux du Thème
+====================================
+*/
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f7f6; /* Fond très clair */
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center; 
+    min-height: 100vh;
+}
+
+.container {
+    background-color: #ffffff;
+    padding: 40px 50px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    max-width: 900px; 
+    width: 90%;
+}
+
+h1 {
+    color: #1a567d; /* Bleu foncé FFF */
+    font-size: 2.2em;
+    margin-bottom: 10px;
+}
+
+h2 {
+    color: #333;
+    font-size: 1.5em;
+    margin-top: 40px;
+    margin-bottom: 10px;
+}
+
+p {
+    color: #555;
+    font-size: 1.1em;
+    margin-bottom: 30px;
+}
+
+/* Style des liens de navigation (Bouton Retour) */
+.back-button {
+    display: inline-block;
+    background-color: #f5f5f5;
+    color: #333;
+    padding: 10px 15px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9em;
+    border: 1px solid #ddd;
+    margin-bottom: 20px;
+    transition: background-color 0.2s;
+    float: left;
+    margin-left: -30px; 
+}
+.back-button:hover {
+    background-color: #e0e0e0;
+}
+
+/* Nettoie le float après le bouton */
+.container:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+
+/*
+====================================
+2. Styles des Liens (Menu Accueil)
+====================================
+*/
+
+.links-grid {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+    flex-wrap: wrap; 
+}
+
+.link-card {
+    flex-basis: 40%; /* Ajusté pour garder de l'espace */
+    background-color: #e6f2f9; 
+    color: #1a567d;
+    padding: 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.2em;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    border-left: 5px solid #1a567d;
+    
+    /* --- Ajout Flexbox pour centrer le contenu verticalement --- */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.link-card:hover {
+    background-color: #d0e7f7;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.link-card span {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.8em;
+    font-weight: normal;
+    opacity: 0.8; /* Légèrement transparent pour le sous-titre */
+}
+
+
+/*
+====================================
+3. Styles des Tableaux (Pages PHP)
+====================================
+*/
+
+.container table {
+    width: 100%; 
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 0.9em;
+}
+
+.container th, .container td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+.container th {
+    background-color: #1a567d;
+    color: white;
+    font-weight: bold;
+    white-space: nowrap; 
+}
+
+tr[style*="background-color: #f0f0f0;"] {
+    background-color: #f0f0f0;
+}
+
+.table-responsive {
+    overflow-x: auto; 
+    margin-bottom: 20px;
+    padding-left: 1px; 
+}
+
+
+/*
+====================================
+4. Optimisation pour Mobile
+====================================
+*/
+
+@media (max-width: 768px) {
+    .container {
+        padding: 20px 10px;
+        width: 95%; 
+        box-shadow: none; 
+    }
+
+    .back-button {
+        float: none; 
+        margin: 0 auto 20px auto; 
+        display: block;
+        width: fit-content;
+    }
+
+    h1 {
+        font-size: 1.8em;
+    }
+    
+    .container table {
+        font-size: 0.8em; 
+        min-width: 600px; 
+    }
+
+    .container th, .container td {
+        padding: 5px 3px; 
+        white-space: nowrap; 
+    }
+    
+    .links-grid {
+        gap: 10px;
+    }
+    .link-card {
+        flex-basis: 100%; 
+    }
+}
+
+/* --- Styles Colonne Figée (Sticky) --- */
+
+.sticky-col {
+    position: sticky;
+    left: 0; 
+    z-index: 2; 
+    box-shadow: 2px 0 3px rgba(0,0,0,0.1);
+}
+
+.sticky-col.header {
+    background-color: #1a567d; 
+    color: white;
+    border-right: 1px solid #ddd;
+}
+
+.sticky-col.data {
+    background-color: #ffffff; 
+    border-right: 1px solid #ddd;
+}
+
+tr[style*="background-color: #f0f0f0;"] .sticky-col.data {
+    background-color: #f0f0f0; 
+}
+
+
+/* --- Styles Badges & Tooltips --- */
+
+.badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: bold;
+    color: white;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.badge-finished { background-color: #27ae60; }
+.badge-upcoming { background-color: #3498db; }
+.badge-postponed { background-color: #f39c12; }
+.badge-forfeit { background-color: #e74c3c; }
+
+.info-tooltip {
+    position: relative;
+    display: inline-block;
+    background-color: #1a567d;
+    color: white;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    border-radius: 50%;
+    text-align: center;
+    cursor: help;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.info-tooltip .tooltiptext {
+    visibility: hidden; 
+    position: absolute; 
+    width: 180px;
+    background-color: #333;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 10px;
+    z-index: 10;
+    bottom: 125%; 
+    left: 50%;
+    margin-left: -90px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: normal;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.3);
+}
+
+.info-tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}

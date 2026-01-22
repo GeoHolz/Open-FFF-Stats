@@ -1,0 +1,7 @@
+www/archives/*
+www/archives
+docker-compose.yml
+update_json.sh
+update_json_u10.sh
+update.log
+www/config.json
