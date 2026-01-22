@@ -5,3 +5,7 @@ update_json.sh
 update_json_u10.sh
 update.log
 www/config.json
+www/cache_u10.json
+www/cache_u11.json
+www/cache_u12.json
+www/cache_u13.json
