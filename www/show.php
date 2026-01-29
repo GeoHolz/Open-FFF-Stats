@@ -74,6 +74,9 @@ $equipe_cible = $donnees['equipe_cible'];
             ?>
                 <tr>
                     <td style="font-size: 0.9em;"><?php echo $m['display_date']; ?></td>
+                    <td style="font-size: 0.9em; text-align: center; color: #666; padding: 0 10px;">
+                        <?php echo $m['heure']; ?>
+                    </td>
                     <td style="text-align: right; <?php echo $m['style_home']; ?>">
                         <?php echo $m['home']; ?>
                         <?php if ($m['home_logo']): ?><img src="<?php echo $m['home_logo']; ?>" style="width:20px; vertical-align:middle;"><?php endif; ?>
