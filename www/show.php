@@ -76,16 +76,23 @@ $equipe_cible = $donnees['equipe_cible'];
                     <td style="font-size: 0.9em;"><?php echo $m['display_date']; ?></td>
                     <td style="font-size: 0.9em; text-align: center; color: #666; padding: 0 10px;">
                         <?php echo $m['heure']; ?>
+                        
+                        <?php if ($m['display_date'] !== 'REPORTÉ' && !empty($m['google_cal_link'])): ?>
+                            <a href="<?php echo $m['google_cal_link']; ?>" 
+                            target="_blank" 
+                            title="Ajouter à Google Calendar" 
+                            style="text-decoration:none; margin-left:5px;">
+                                📅
+                            </a>
+                        <?php endif; ?>
                     </td>
                     <td style="text-align: right; <?php echo $m['style_home']; ?>">
-                        <?php echo $m['home']; ?>
-                        <?php if ($m['home_logo']): ?><img src="<?php echo $m['home_logo']; ?>" style="width:20px; vertical-align:middle;"><?php endif; ?>
+                        <?php echo $m['home_display']; ?> <?php if ($m['home_logo']): ?><img src="<?php echo $m['home_logo']; ?>" style="width:20px; vertical-align:middle;"><?php endif; ?>
                     </td>
                     <td style="text-align: center; font-weight: bold; background:#fdfdfd;"><?php echo $m['score_txt']; ?></td>
                     <td style="text-align: left; <?php echo $m['style_away']; ?>">
                         <?php if ($m['away_logo']): ?><img src="<?php echo $m['away_logo']; ?>" style="width:20px; vertical-align:middle;"><?php endif; ?>
-                        <?php echo $m['away']; ?>
-                    </td>
+                        <?php echo $m['away_display']; ?> </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -124,8 +131,8 @@ $equipe_cible = $donnees['equipe_cible'];
                 $previous_date = $m['raw_date'];
                 
                 // Mettre en gras si c'est l'équipe cible
-                $home_display = ($m['home'] === $equipe_cible) ? '<strong>'.$m['home'].'</strong>' : $m['home'];
-                $away_display = ($m['away'] === $equipe_cible) ? '<strong>'.$m['away'].'</strong>' : $m['away'];
+                $home_name_html = ($m['home'] === $equipe_cible) ? '<strong>'.$m['home_display'].'</strong>' : $m['home_display'];
+                $away_name_html = ($m['away'] === $equipe_cible) ? '<strong>'.$m['away_display'].'</strong>' : $m['away_display'];
             ?>
                 <tr style="<?php echo $current_bg; ?>">
                     <td><?php echo $m['display_date']; ?></td>
@@ -140,13 +147,13 @@ $equipe_cible = $donnees['equipe_cible'];
                         </div>
                     </td>
                     <td style="text-align: right;">
-                        <?php echo $home_display; ?>
+                        <?php echo $home_name_html; ?>
                         <?php if ($m['home_logo']): ?><img src="<?php echo $m['home_logo']; ?>" style="width:20px; vertical-align:middle;"><?php endif; ?>
                     </td>
                     <td style="font-weight: bold; text-align:center;"><?php echo $m['score_txt']; ?></td>
                     <td style="text-align: left;">
                         <?php if ($m['away_logo']): ?><img src="<?php echo $m['away_logo']; ?>" style="width:20px; vertical-align:middle;"><?php endif; ?>
-                        <?php echo $away_display; ?>
+                        <?php echo $away_name_html; ?>
                     </td>
                     <td style="font-size:0.9em;"><?php echo $m['vainqueur']; ?></td>
                 </tr>

@@ -1,8 +1,14 @@
-www/archives/*
-www/archives
-docker-compose.yml
-update_json.sh
-update_json_u10.sh
-update.log
+# Fichiers de configuration sensibles
 www/config.json
+
+# Tous les fichiers de cache (u10, u11, u12, u13, etc.)
+www/cache_*.json
 www/cache*
+
+# Dossiers
+www/archives/
+docker-compose.yml
+
+# Scripts et logs
+*.sh
+*.log

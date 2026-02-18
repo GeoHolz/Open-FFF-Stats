@@ -22,7 +22,7 @@ function recupererDonnees($compet_slug) {
     // =============================================================
     // 2. VÉRIFICATION DU CACHE (4 Heures)
     // =============================================================
-    $duree_cache = 4 * 3600; 
+    $duree_cache = 2 * 3600; 
     $doit_telecharger = false;
 
     if (!file_exists($cache_file)) {
@@ -99,38 +99,81 @@ function recupererDonnees($compet_slug) {
 foreach ($matches as $match) {
         if (!isset($match['home']) || !isset($match['away'])) continue;
 
+        // --- IDENTIFICATION DES ÉQUIPES (Noms bruts pour le tri/config) ---
         $home_team = $match['home']['short_name'] ?? 'Inconnu';
         $away_team = $match['away']['short_name'] ?? 'Inconnu';
         $home_score = isset($match['home_score']) ? (int)$match['home_score'] : -1;
         $away_score = isset($match['away_score']) ? (int)$match['away_score'] : -1;
         
-        // --- 1. GESTION DES DATES ET DU TEXTE "REPORTÉ" ---
-        $date_api = $match['date'];
-        $status_label = $match['status_label'] ?? '';
-        
-        // Variables par défaut
-        $display_date = '';
-        $date_pour_tri = $date_api; // On utilisera ça pour 'raw_date' afin de garder le tri correct
+        // --- PRÉPARATION DE L'AFFICHAGE (ex: WEPPES ES 1 ou LA GORGUE CS 2) ---
+        $home_code = $match['home']['code'] ?? null;
+        $away_code = $match['away']['code'] ?? null;
 
-        // Logique de détection du report
+        // On utilise % 10 pour transformer 21 en 1, 22 en 2, etc.
+        $home_num = ($home_code > 0) ? ($home_code % 10) : null;
+        $away_num = ($away_code > 0) ? ($away_code % 10) : null;
+
+        $home_display = $home_num ? $home_team . ' ' . $home_num : $home_team;
+        $away_display = $away_num ? $away_team . ' ' . $away_num : $away_team;
+
+        // --- 1. GESTION DES DATES ET DU TEXTE "REPORTÉ" ---
+        $date_api = $match['date'] ?? null;
+        $status_label = $match['status_label'] ?? '';
+        $display_date = '';
+        $date_pour_tri = $date_api;
+
         if (empty($date_api) || $status_label === 'Reporté') {
-            // AFFICHER "REPORTÉ" À LA PLACE DE LA DATE
             $display_date = "REPORTÉ";
-            
-            // Astuce : pour que le match ne finisse pas en 1970 en bas de tableau,
-            // on utilise la date initiale (prévue) pour le tri
             if (!empty($match['initial_date'])) {
                 $date_pour_tri = $match['initial_date'];
             }
         } else {
-            // Cas normal
             $display_date = date("d/m/Y", strtotime($date_api));
         }
 
-        // --- A. Calcul du Classement (Reste inchangé) ---
-        foreach ([$home_team => $match['home']['club']['logo'] ?? '', $away_team => $match['away']['club']['logo'] ?? ''] as $team => $logo) {
-            if (!isset($classement[$team])) {
-                $classement[$team] = ['Logo' => $logo, 'Joué' => 0, 'Gagné' => 0, 'Nul' => 0, 'Perdu' => 0, 'BP' => 0, 'BC' => 0, 'Points' => 0, 'Diff' => 0];
+        // --- 2. PRÉPARATION DU LIEN GOOGLE CALENDAR ---
+        $google_cal_link = "";
+        if ($display_date !== 'REPORTÉ' && !empty($date_pour_tri)) {
+            $heure_brute = $match['time'] ?? '00:00';
+            $heure_format = str_replace(['H', 'h'], ':', $heure_brute);
+            $timestamp_start = strtotime(substr($date_pour_tri, 0, 10) . ' ' . $heure_format);
+            
+            if ($timestamp_start) {
+                $start_google = date("Ymd\THis", $timestamp_start);
+                $end_google   = date("Ymd\THis", $timestamp_start + 5400); 
+                $adresse_gps = ($match['terrain']['address'] ?? '') . ', ' . ($match['terrain']['zip_code'] ?? '') . ' ' . ($match['terrain']['city'] ?? '');
+                
+                // On utilise les noms avec numéro pour le titre du calendrier
+                $google_cal_link = "https://www.google.com/calendar/render?action=TEMPLATE" 
+                    . "&text=" . urlencode("Foot : " . $home_display . " vs " . $away_display)
+                    . "&dates=" . $start_google . "/" . $end_google
+                    . "&details=" . urlencode("Terrain : " . ($match['terrain']['libelle_surface'] ?? ''))
+                    . "&location=" . urlencode($adresse_gps)
+                    . "&ctz=Europe/Paris";
+            }
+        }
+
+// --- 3. CALCUL DU CLASSEMENT ---
+        // On prépare les données pour l'initialisation
+        $teams_data = [
+            $home_team => ['logo' => $match['home']['club']['logo'] ?? '', 'display' => $home_display],
+            $away_team => ['logo' => $match['away']['club']['logo'] ?? '', 'display' => $away_display]
+        ];
+
+        foreach ($teams_data as $team_raw => $info) {
+            if (!isset($classement[$team_raw])) {
+                $classement[$team_raw] = [
+                    'Logo'   => $info['logo'], 
+                    'Nom'    => $info['display'], // C'est ici qu'on injecte le nom avec le numéro
+                    'Joué'   => 0, 
+                    'Gagné'  => 0, 
+                    'Nul'    => 0, 
+                    'Perdu'  => 0, 
+                    'BP'     => 0, 
+                    'BC'     => 0, 
+                    'Points' => 0, 
+                    'Diff'   => 0
+                ];
             }
         }
 
@@ -149,13 +192,11 @@ foreach ($matches as $match) {
             }
         }
 
-        // --- B. Styles (Reste inchangé) ---
-        $style_home = ''; 
-        $style_away = '';
-        
+        // --- 4. STYLES (Utilise $home_team brut pour comparer avec $equipe_cible) ---
+        $style_home = ''; $style_away = '';
         if ($home_score >= 0 && $away_score >= 0) {
             $colors = ['win' => '#d4edda', 'lose' => '#f8d7da', 'draw' => '#fff3cd'];
-             if ($home_score > $away_score) {
+            if ($home_score > $away_score) {
                 if ($home_team === $equipe_cible) $style_home = "background:{$colors['win']};font-weight:bold;";
                 if ($away_team === $equipe_cible) $style_away = "background:{$colors['lose']};font-weight:bold;";
             } elseif ($home_score < $away_score) {
@@ -167,18 +208,16 @@ foreach ($matches as $match) {
             }
         }
 
-        // --- C. Formatage Final ---
+        // --- 5. REMPLISSAGE DU TABLEAU FINAL ---
         $matches_formatted[] = [
-            // Ici on utilise $date_pour_tri pour que le tri chronologique fonctionne
             'raw_date' => substr($date_pour_tri ?? '', 0, 10),
-            
-            // Ici on utilise ta variable personnalisée "REPORTÉ"
             'display_date' => $display_date,
-            
             'heure' => $match['time'] ?? '',
             'journee' => $match['poule_journee']['name'] ?? '',
-            'home' => $home_team,
-            'away' => $away_team,
+            'home' => $home_team, // Nom propre pour les filtres PHP
+            'away' => $away_team, // Nom propre pour les filtres PHP
+            'home_display' => $home_display, // Nom avec numéro pour le HTML
+            'away_display' => $away_display, // Nom avec numéro pour le HTML
             'home_logo' => $match['home']['club']['logo'] ?? '',
             'away_logo' => $match['away']['club']['logo'] ?? '',
             'score_txt' => ($home_score >= 0) ? "$home_score - $away_score" : "vs",
@@ -189,14 +228,20 @@ foreach ($matches as $match) {
                 'class' => ($home_score >= 0) ? 'badge-finished' : (($display_date === 'REPORTÉ') ? 'badge-postponed' : 'badge-upcoming')
             ],
             'vainqueur' => ($home_score >= 0) ? (($home_score > $away_score ? $home_team : ($away_score > $home_score ? $away_team : 'Nul'))) : 'À venir',
-            'surface' => $match['terrain']['libelle_surface'] ?? ''
+            'surface' => $match['terrain']['libelle_surface'] ?? '',
+            'google_cal_link' => $google_cal_link
         ];
     }
 
-    // --- D. Tri du classement ---
-    foreach ($classement as $nom => $vals) { 
-        $classement[$nom]['Diff'] = $vals['BP'] - $vals['BC']; 
-        $classement[$nom]['Nom'] = $nom; 
+// =============================================================
+    // D. CALCUL FINAL ET TRI DU CLASSEMENT
+    // =============================================================
+    foreach ($classement as $nom_brut => $vals) { 
+        $classement[$nom_brut]['Diff'] = $vals['BP'] - $vals['BC']; 
+        
+        // ATTENTION : On ne fait SURTOUT PAS $classement[$nom_brut]['Nom'] = $nom_brut;
+        // car cela écraserait le nom avec le numéro d'équipe (ex: RONCQ ES 2) 
+        // par le nom court (ex: RONCQ ES).
     }
     
     // Tri : Points DESC, Diff DESC, Buts Marqués DESC
