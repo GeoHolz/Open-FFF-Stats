@@ -14,20 +14,16 @@ function recupererDonnees($compet_slug) {
     $conf = $config_global[$compet_slug];
     $api = $conf['api'];
     
-    // --- NOUVEAU : Nom du fichier cache incluant la Phase ---
-    // Cela permet de ne pas mélanger Phase 1 et Phase 2
     $phase_suffix = isset($api['phase_id']) ? '_phase' . $api['phase_id'] : '';
     $cache_file = "cache_{$compet_slug}{$phase_suffix}.json";
     
     // =============================================================
-    // 2. VÉRIFICATION DU CACHE (4 Heures)
+    // 2. VÉRIFICATION DU CACHE (2 Heures)
     // =============================================================
     $duree_cache = 2 * 3600; 
     $doit_telecharger = false;
 
-    if (!file_exists($cache_file)) {
-        $doit_telecharger = true;
-    } elseif (time() - filemtime($cache_file) > $duree_cache) {
+    if (!file_exists($cache_file) || (time() - filemtime($cache_file) > $duree_cache)) {
         $doit_telecharger = true;
     }
 
@@ -35,88 +31,93 @@ function recupererDonnees($compet_slug) {
     // 3. TÉLÉCHARGEMENT SÉCURISÉ
     // =============================================================
     if ($doit_telecharger) {
-        // Construction de l'URL
         $url = "https://api-dofa.fff.fr/api/compets/{$api['compet_id']}/phases/{$api['phase_id']}/poules/{$api['poule_id']}/resultat";
         $url .= "?ma_dat%5Bafter%5D={$api['date_start']}&ma_dat%5Bbefore%5D={$api['date_end']}";
 
-        // --- DÉBUT DU BLOC CURL ---
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        // User-Agent pour éviter le blocage 403
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0');
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36');
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         
         $json_api = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
         curl_close($ch);
-        // --- FIN DU BLOC CURL ---
 
         if ($json_api && $http_code === 200) {
-            // --- SÉCURITÉ ANTI-PERTE DE DONNÉES ---
             $data_verif = json_decode($json_api, true);
-            
-            // On écrase le fichier SEULEMENT si on a reçu des données valides (au moins 1 match)
             if (isset($data_verif['hydra:member']) && count($data_verif['hydra:member']) > 0) {
                 file_put_contents($cache_file, $json_api);
-            } else {
-                // Si l'API répond "vide" (ex: transition de phase), on garde notre vieux fichier
-                // Mais on met à jour sa date de modif (touch) pour ne pas réessayer avant 4h
-                if (file_exists($cache_file)) {
-                    touch($cache_file);
-                }
+            } elseif (file_exists($cache_file)) {
+                touch($cache_file);
             }
-        } elseif (!file_exists($cache_file)) {
-            // Si c'est la première fois et que ça plante, on arrête tout
-            die("Erreur API FFF : Code HTTP $http_code. <br>Erreur cURL : $curl_error");
         }
     }
 
     // =============================================================
     // 4. TRAITEMENT ET FORMATAGE
     // =============================================================
-    if (!file_exists($cache_file)) die("Erreur critique : Impossible de lire le fichier cache ($cache_file).");
+    if (!file_exists($cache_file)) die("Erreur : Cache introuvable.");
     
     $json_content = file_get_contents($cache_file);
     $data = json_decode($json_content, true);
     
-    // Petite sécurité si le JSON est corrompu
     if (!$data || !isset($data['hydra:member'])) {
-        unlink($cache_file); // On supprime le fichier corrompu
-        die("Erreur : Le fichier cache était corrompu et a été supprimé. Rafraichissez la page.");
+        unlink($cache_file);
+        die("Erreur : Cache corrompu.");
     }
 
     $matches = $data['hydra:member'];
+
+    // --- AUTO-CORRECTION DU TITRE (POULE) ---
+    // On récupère le nom de la poule réelle dans le premier match
+    if (!empty($matches[0]['poule']['name'])) {
+        $poule_reelle = $matches[0]['poule']['name']; // ex: "POULE J"
+        
+        // Si le titre enregistré dans config.json ne contient pas le nom de la poule réelle
+        if (strpos(strtoupper($conf['titre']), strtoupper($poule_reelle)) === false) {
+            $categorie = strtoupper($compet_slug);
+            $nouveau_titre = "Classement $categorie - $poule_reelle";
+            
+            // Mise à jour de la config et sauvegarde physique
+            $config_global[$compet_slug]['titre'] = $nouveau_titre;
+            file_put_contents('config.json', json_encode($config_global, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            
+            // Mise à jour de la variable locale pour l'affichage courant
+            $conf['titre'] = $nouveau_titre;
+        }
+    }
+
     $last_update = date("d/m/Y H:i", filemtime($cache_file));
     $equipe_cible = $conf['equipe_cible'];
 
     $classement = [];
     $matches_formatted = [];
 
-// ... Début de la boucle foreach ($matches as $match) ...
-
-foreach ($matches as $match) {
+    foreach ($matches as $match) {
         if (!isset($match['home']) || !isset($match['away'])) continue;
 
-        // --- IDENTIFICATION DES ÉQUIPES (Noms bruts pour le tri/config) ---
+        // --- IDENTIFICATION DES ÉQUIPES ---
         $home_team = $match['home']['short_name'] ?? 'Inconnu';
         $away_team = $match['away']['short_name'] ?? 'Inconnu';
         $home_score = isset($match['home_score']) ? (int)$match['home_score'] : -1;
         $away_score = isset($match['away_score']) ? (int)$match['away_score'] : -1;
         
-        // --- PRÉPARATION DE L'AFFICHAGE (ex: WEPPES ES 1 ou LA GORGUE CS 2) ---
-        $home_code = $match['home']['code'] ?? null;
-        $away_code = $match['away']['code'] ?? null;
-
-        // On utilise % 10 pour transformer 21 en 1, 22 en 2, etc.
+        // --- GESTION DES NUMÉROS D'ÉQUIPES (Modulo 10 pour U10/U12) ---
+        $home_code = $match['home']['code'] ?? 0;
+        $away_code = $match['away']['code'] ?? 0;
         $home_num = ($home_code > 0) ? ($home_code % 10) : null;
         $away_num = ($away_code > 0) ? ($away_code % 10) : null;
 
         $home_display = $home_num ? $home_team . ' ' . $home_num : $home_team;
         $away_display = $away_num ? $away_team . ' ' . $away_num : $away_team;
 
-        // --- 1. GESTION DES DATES ET DU TEXTE "REPORTÉ" ---
+        // --- DÉTECTION DES FORFAITS (FM/FG) ---
+        $is_forfait_home = in_array($match['home_resu'] ?? '', ['FM', 'FG']);
+        $is_forfait_away = in_array($match['away_resu'] ?? '', ['FM', 'FG']);
+        $is_forfait = ($is_forfait_home || $is_forfait_away);
+
+        // --- 1. GESTION DES DATES ---
         $date_api = $match['date'] ?? null;
         $status_label = $match['status_label'] ?? '';
         $display_date = '';
@@ -124,55 +125,39 @@ foreach ($matches as $match) {
 
         if (empty($date_api) || $status_label === 'Reporté') {
             $display_date = "REPORTÉ";
-            if (!empty($match['initial_date'])) {
-                $date_pour_tri = $match['initial_date'];
-            }
+            if (!empty($match['initial_date'])) $date_pour_tri = $match['initial_date'];
         } else {
             $display_date = date("d/m/Y", strtotime($date_api));
         }
 
-        // --- 2. PRÉPARATION DU LIEN GOOGLE CALENDAR ---
+        // --- 2. LIEN CALENDRIER ---
         $google_cal_link = "";
         if ($display_date !== 'REPORTÉ' && !empty($date_pour_tri)) {
-            $heure_brute = $match['time'] ?? '00:00';
-            $heure_format = str_replace(['H', 'h'], ':', $heure_brute);
+            $heure_format = str_replace(['H', 'h'], ':', $match['time'] ?? '00:00');
             $timestamp_start = strtotime(substr($date_pour_tri, 0, 10) . ' ' . $heure_format);
-            
             if ($timestamp_start) {
                 $start_google = date("Ymd\THis", $timestamp_start);
                 $end_google   = date("Ymd\THis", $timestamp_start + 5400); 
                 $adresse_gps = ($match['terrain']['address'] ?? '') . ', ' . ($match['terrain']['zip_code'] ?? '') . ' ' . ($match['terrain']['city'] ?? '');
-                
-                // On utilise les noms avec numéro pour le titre du calendrier
                 $google_cal_link = "https://www.google.com/calendar/render?action=TEMPLATE" 
                     . "&text=" . urlencode("Foot : " . $home_display . " vs " . $away_display)
                     . "&dates=" . $start_google . "/" . $end_google
-                    . "&details=" . urlencode("Terrain : " . ($match['terrain']['libelle_surface'] ?? ''))
                     . "&location=" . urlencode($adresse_gps)
                     . "&ctz=Europe/Paris";
             }
         }
 
-// --- 3. CALCUL DU CLASSEMENT ---
-        // On prépare les données pour l'initialisation
-        $teams_data = [
+        // --- 3. CALCUL DU CLASSEMENT ---
+        $teams_init = [
             $home_team => ['logo' => $match['home']['club']['logo'] ?? '', 'display' => $home_display],
             $away_team => ['logo' => $match['away']['club']['logo'] ?? '', 'display' => $away_display]
         ];
 
-        foreach ($teams_data as $team_raw => $info) {
+        foreach ($teams_init as $team_raw => $info) {
             if (!isset($classement[$team_raw])) {
                 $classement[$team_raw] = [
-                    'Logo'   => $info['logo'], 
-                    'Nom'    => $info['display'], // C'est ici qu'on injecte le nom avec le numéro
-                    'Joué'   => 0, 
-                    'Gagné'  => 0, 
-                    'Nul'    => 0, 
-                    'Perdu'  => 0, 
-                    'BP'     => 0, 
-                    'BC'     => 0, 
-                    'Points' => 0, 
-                    'Diff'   => 0
+                    'Logo' => $info['logo'], 'Nom' => $info['display'], 
+                    'Joué' => 0, 'Gagné' => 0, 'Nul' => 0, 'Perdu' => 0, 'BP' => 0, 'BC' => 0, 'Points' => 0, 'Diff' => 0
                 ];
             }
         }
@@ -192,7 +177,7 @@ foreach ($matches as $match) {
             }
         }
 
-        // --- 4. STYLES (Utilise $home_team brut pour comparer avec $equipe_cible) ---
+        // --- 4. STYLES ---
         $style_home = ''; $style_away = '';
         if ($home_score >= 0 && $away_score >= 0) {
             $colors = ['win' => '#d4edda', 'lose' => '#f8d7da', 'draw' => '#fff3cd'];
@@ -208,23 +193,24 @@ foreach ($matches as $match) {
             }
         }
 
-        // --- 5. REMPLISSAGE DU TABLEAU FINAL ---
+        // --- 5. ASSEMBLAGE FINAL ---
         $matches_formatted[] = [
             'raw_date' => substr($date_pour_tri ?? '', 0, 10),
             'display_date' => $display_date,
             'heure' => $match['time'] ?? '',
             'journee' => $match['poule_journee']['name'] ?? '',
-            'home' => $home_team, // Nom propre pour les filtres PHP
-            'away' => $away_team, // Nom propre pour les filtres PHP
-            'home_display' => $home_display, // Nom avec numéro pour le HTML
-            'away_display' => $away_display, // Nom avec numéro pour le HTML
+            'home' => $home_team,
+            'away' => $away_team,
+            'home_display' => $home_display,
+            'away_display' => $away_display,
             'home_logo' => $match['home']['club']['logo'] ?? '',
             'away_logo' => $match['away']['club']['logo'] ?? '',
             'score_txt' => ($home_score >= 0) ? "$home_score - $away_score" : "vs",
+            'is_forfait' => $is_forfait,
             'style_home' => $style_home,
             'style_away' => $style_away,
             'status' => [
-                'label' => ($home_score >= 0) ? 'Terminé' : (($display_date === 'REPORTÉ') ? 'Reporté' : 'À venir'), 
+                'label' => ($home_score >= 0) ? ($is_forfait ? 'Forfait' : 'Terminé') : (($display_date === 'REPORTÉ') ? 'Reporté' : 'À venir'), 
                 'class' => ($home_score >= 0) ? 'badge-finished' : (($display_date === 'REPORTÉ') ? 'badge-postponed' : 'badge-upcoming')
             ],
             'vainqueur' => ($home_score >= 0) ? (($home_score > $away_score ? $home_team : ($away_score > $home_score ? $away_team : 'Nul'))) : 'À venir',
@@ -233,18 +219,11 @@ foreach ($matches as $match) {
         ];
     }
 
-// =============================================================
-    // D. CALCUL FINAL ET TRI DU CLASSEMENT
-    // =============================================================
+    // --- D. TRI FINAL ---
     foreach ($classement as $nom_brut => $vals) { 
         $classement[$nom_brut]['Diff'] = $vals['BP'] - $vals['BC']; 
-        
-        // ATTENTION : On ne fait SURTOUT PAS $classement[$nom_brut]['Nom'] = $nom_brut;
-        // car cela écraserait le nom avec le numéro d'équipe (ex: RONCQ ES 2) 
-        // par le nom court (ex: RONCQ ES).
     }
     
-    // Tri : Points DESC, Diff DESC, Buts Marqués DESC
     usort($classement, function ($a, $b) { 
         return ($b['Points'] <=> $a['Points']) ?: ($b['Diff'] <=> $a['Diff']) ?: ($b['BP'] <=> $a['BP']); 
     });
@@ -257,4 +236,3 @@ foreach ($matches as $match) {
         'matches' => $matches_formatted
     ];
 }
-?>

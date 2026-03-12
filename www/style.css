@@ -182,7 +182,7 @@ tr[style*="background-color: #f0f0f0;"] {
     
     .container table {
         font-size: 0.8em; 
-        min-width: 600px; 
+        /* SUPPRIMÉ : min-width: 600px; */
     }
 
     .container th, .container td {

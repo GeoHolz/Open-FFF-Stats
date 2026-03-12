@@ -18,10 +18,69 @@ $equipe_cible = $donnees['equipe_cible'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $donnees['titre']; ?></title> 
     <link rel="stylesheet" href="style.css">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
+<style>
+    .table-responsive table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    /* On serre les colonnes de chiffres au maximum */
+    th:not(.col-equipe), 
+    td:not(.col-equipe) {
+        width: 1%; 
+        white-space: nowrap; 
+        padding: 8px 10px;
+        text-align: center;
+    }
+
+    /* La colonne équipe prend le reste de l'espace */
+    .col-equipe {
+        width: auto;
+        text-align: left !important;
+    }
+
+    /* On autorise le retour à la ligne pour les noms d'équipes dans les matchs */
+    .team-wrap {
+        white-space: normal !important; 
+        line-height: 1.3;               
+        width: 40%;                     
+    }
+
+    /* --- REDIMENSIONNEMENT DE LA PASTILLE INFO --- */
+    .info-tooltip {
+        width: 16px !important;
+        height: 16px !important;
+        line-height: 16px !important;
+        font-size: 11px !important;
+        margin-left: 4px;
+        vertical-align: middle;
+        /* On s'assure qu'elle garde son style d'origine */
+        position: relative;
+        display: inline-block;
+        background-color: #1a567d;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        cursor: help;
+        font-weight: bold;
+    }
+
+    @media screen and (max-width: 600px) {
+        table { font-size: 0.85em; }
+        th, td { padding: 8px 4px; }
+        
+        .col-equipe {
+            max-width: 130px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .team-wrap {
+            font-size: 0.95em;
+        }
+    }
+</style>
 </head>
 <body>
     <div class="container">
@@ -36,7 +95,7 @@ $equipe_cible = $donnees['equipe_cible'];
             <thead>
                 <tr>
                     <th>Pos.</th>
-                    <th class="sticky-col header">Équipe</th>
+                    <th class="col-equipe">Équipe</th>
                     <th>Pts</th><th>J</th><th>G</th><th>N</th><th>P</th><th>Diff</th>
                 </tr>
             </thead>
@@ -44,7 +103,7 @@ $equipe_cible = $donnees['equipe_cible'];
                 <?php $pos = 1; foreach ($classement as $equipe): ?>
                 <tr>
                     <td><?php echo $pos++; ?></td>
-                    <td class="sticky-col data" style="text-align: left; font-weight: bold;">
+                    <td class="col-equipe" style="font-weight: bold;">
                         <?php if ($equipe['Logo']): ?>
                             <img src="<?php echo $equipe['Logo']; ?>" style="width: 20px; vertical-align:middle; margin-right:5px;">
                         <?php endif; ?>
@@ -69,30 +128,35 @@ $equipe_cible = $donnees['equipe_cible'];
         <table id="equipe_focus">
             <tbody>
             <?php foreach ($matches as $m): 
-                // Filtre : Uniquement les matchs de l'équipe cible
                 if ($m['home'] !== $equipe_cible && $m['away'] !== $equipe_cible) continue;
             ?>
                 <tr>
-                    <td style="font-size: 0.9em;"><?php echo $m['display_date']; ?></td>
-                    <td style="font-size: 0.9em; text-align: center; color: #666; padding: 0 10px;">
-                        <?php echo $m['heure']; ?>
+                    <td style="font-size: 0.9em; text-align: center;">
+                        <?php echo $m['display_date']; ?><br>
+                        <span style="font-size: 0.85em; color: #666;"><?php echo $m['heure']; ?></span>
                         
                         <?php if ($m['display_date'] !== 'REPORTÉ' && !empty($m['google_cal_link'])): ?>
                             <a href="<?php echo $m['google_cal_link']; ?>" 
                             target="_blank" 
                             title="Ajouter à Google Calendar" 
-                            style="text-decoration:none; margin-left:5px;">
-                                📅
-                            </a>
+                            style="text-decoration:none; margin-left:3px; vertical-align: middle;">📅</a>
                         <?php endif; ?>
                     </td>
-                    <td style="text-align: right; <?php echo $m['style_home']; ?>">
-                        <?php echo $m['home_display']; ?> <?php if ($m['home_logo']): ?><img src="<?php echo $m['home_logo']; ?>" style="width:20px; vertical-align:middle;"><?php endif; ?>
+                    
+                    <td class="team-wrap" style="text-align: right; <?php echo $m['style_home']; ?>">
+                        <?php echo $m['home_display']; ?> 
+                        <?php if ($m['home_logo']): ?><img src="<?php echo $m['home_logo']; ?>" style="width:20px; vertical-align:middle; margin-left:4px;"><?php endif; ?>
                     </td>
-                    <td style="text-align: center; font-weight: bold; background:#fdfdfd;"><?php echo $m['score_txt']; ?></td>
-                    <td style="text-align: left; <?php echo $m['style_away']; ?>">
-                        <?php if ($m['away_logo']): ?><img src="<?php echo $m['away_logo']; ?>" style="width:20px; vertical-align:middle;"><?php endif; ?>
-                        <?php echo $m['away_display']; ?> </td>
+                    <td style="text-align: center; font-weight: bold; background:#fdfdfd;">
+                        <?php echo $m['score_txt']; ?>
+                        <?php if ($m['is_forfait']): ?>
+                            <br><small style="color:red; font-size:0.7em; display:block;">FORFAIT</small>
+                        <?php endif; ?>
+                    </td>
+                    <td class="team-wrap" style="text-align: left; <?php echo $m['style_away']; ?>">
+                        <?php if ($m['away_logo']): ?><img src="<?php echo $m['away_logo']; ?>" style="width:20px; vertical-align:middle; margin-right:4px;"><?php endif; ?>
+                        <?php echo $m['away_display']; ?> 
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -104,7 +168,6 @@ $equipe_cible = $donnees['equipe_cible'];
     <h2>Tous les matchs (<?php echo count($matches); ?>)</h2>
     
     <?php 
-    // Variables pour l'alternance de couleur par date
     $previous_date = null; 
     $current_bg = ''; 
     ?>
@@ -113,68 +176,82 @@ $equipe_cible = $donnees['equipe_cible'];
         <table id="match_detail">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Heure</th>
-                    <th>Info</th>
-                    <th>Domicile</th>
+                    <th>Date / Heure</th>
+                    <th class="team-wrap">Domicile</th>
                     <th>Score</th>
-                    <th>Extérieur</th>
-                    <th>Vainqueur</th>
+                    <th class="team-wrap">Extérieur</th>
                 </tr>
             </thead>
             <tbody>
             <?php foreach ($matches as $m): 
-                // Logique pour alterner la couleur de fond si la date change
                 if ($previous_date !== $m['raw_date'] && $previous_date !== null) {
                     $current_bg = ($current_bg === '') ? 'background-color: #f0f0f0;' : '';
                 }
                 $previous_date = $m['raw_date'];
                 
-                // Mettre en gras si c'est l'équipe cible
                 $home_name_html = ($m['home'] === $equipe_cible) ? '<strong>'.$m['home_display'].'</strong>' : $m['home_display'];
                 $away_name_html = ($m['away'] === $equipe_cible) ? '<strong>'.$m['away_display'].'</strong>' : $m['away_display'];
+
+                $style_home_all = '';
+                $style_away_all = '';
+                
+                if ($m['vainqueur'] !== 'À venir') {
+                    $colors = ['win' => '#d4edda', 'lose' => '#f8d7da', 'draw' => '#fff3cd'];
+                    
+                    if ($m['vainqueur'] === $m['home']) {
+                        $style_home_all = "background:{$colors['win']}; font-weight:bold;";
+                        $style_away_all = "background:{$colors['lose']};";
+                    } elseif ($m['vainqueur'] === $m['away']) {
+                        $style_home_all = "background:{$colors['lose']};";
+                        $style_away_all = "background:{$colors['win']}; font-weight:bold;";
+                    } else {
+                        $style_home_all = "background:{$colors['draw']};";
+                        $style_away_all = "background:{$colors['draw']};";
+                    }
+                }
             ?>
                 <tr style="<?php echo $current_bg; ?>">
-                    <td><?php echo $m['display_date']; ?></td>
-                    <td style="text-align: center;"><?php echo $m['heure']; ?></td>
-                    <td>
-                        <div class="info-tooltip">?
-                            <span class="tooltiptext">
-                                <strong>Journée :</strong> <?php echo $m['journee']; ?><br>
-                                <strong>Terrain :</strong> <?php echo $m['surface']; ?><br>
-                                <span class="<?php echo $m['status']['class']; ?>"><?php echo $m['status']['label']; ?></span>
-                            </span>
-                        </div>
+                    <td style="text-align: center;">
+                        <?php echo $m['display_date']; ?><br>
+                        
+                        <span style="font-size: 0.85em; color: #666;">
+                            <?php echo $m['heure']; ?>
+                            
+                            <div class="info-tooltip">?
+                                <span class="tooltiptext">
+                                    <strong>Journée :</strong> <?php echo $m['journee']; ?><br>
+                                    <strong>Terrain :</strong> <?php echo $m['surface']; ?><br>
+                                    <span class="<?php echo $m['status']['class']; ?>"><?php echo $m['status']['label']; ?></span>
+                                </span>
+                            </div>
+                        </span>
                     </td>
-                    <td style="text-align: right;">
+                    
+                    <td class="team-wrap" style="text-align: right; <?php echo $style_home_all; ?>">
                         <?php echo $home_name_html; ?>
-                        <?php if ($m['home_logo']): ?><img src="<?php echo $m['home_logo']; ?>" style="width:20px; vertical-align:middle;"><?php endif; ?>
+                        <?php if ($m['home_logo']): ?><img src="<?php echo $m['home_logo']; ?>" style="width:20px; vertical-align:middle; margin-left:4px;"><?php endif; ?>
                     </td>
-                    <td style="font-weight: bold; text-align:center;"><?php echo $m['score_txt']; ?></td>
-                    <td style="text-align: left;">
-                        <?php if ($m['away_logo']): ?><img src="<?php echo $m['away_logo']; ?>" style="width:20px; vertical-align:middle;"><?php endif; ?>
+                    
+                    <td style="font-weight: bold; text-align:center;">
+                        <?php echo $m['score_txt']; ?>
+                        <?php if ($m['is_forfait']): ?>
+                            <div style="color:red; font-size:0.7em; font-weight:normal;">Forfait</div>
+                        <?php endif; ?>
+                    </td>
+                    
+                    <td class="team-wrap" style="text-align: left; <?php echo $style_away_all; ?>">
+                        <?php if ($m['away_logo']): ?><img src="<?php echo $m['away_logo']; ?>" style="width:20px; vertical-align:middle; margin-right:4px;"><?php endif; ?>
                         <?php echo $away_name_html; ?>
                     </td>
-                    <td style="font-size:0.9em;"><?php echo $m['vainqueur']; ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
         </table>
     </div>
-<div class="footer">
-    <p>
-        Propulsé par 
-        <a href="https://github.com/GeoHolz/Open-FFF-Stats/" target="_blank" style="display: inline-flex; align-items: center; text-decoration: none; color: #1a567d;">
-            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" 
-                 width="20" 
-                 height="20" 
-                 style="margin-right: 8px;" 
-                 alt="GitHub">
-            Open-FFF-Stats
-        </a> 
-        • Développé pour l'ES Weppes
-    </p>
-</div>
+
+    <div class="footer">
+        <p>Propulsé par <a href="https://github.com/GeoHolz/Open-FFF-Stats/" target="_blank">Open-FFF-Stats</a> • ES Weppes</p>
+    </div>
     </div>
 </body>
 </html>
