@@ -1,55 +1,87 @@
 <?php
 // get_data.php
 
-function recupererDonnees($compet_slug, $phase_demandee = null) {
+function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) {
     // =============================================================
-    // 1. CHARGEMENT CONFIGURATION
+    // 1. CHARGEMENT CONFIGURATION UNIQUE (CENTRALISÉE)
     // =============================================================
-    $config_json = @file_get_contents('config.json');
-    if (!$config_json) die("Erreur : Fichier config.json introuvable.");
+    $config_file = "config.json";
+    $config_json = @file_get_contents($config_file);
+    if (!$config_json) die("Erreur : Fichier de configuration unique '$config_file' introuvable.");
     
     $config_global = json_decode($config_json, true);
-    if (!isset($config_global[$compet_slug])) die("Erreur : Compétition '$compet_slug' non trouvée dans config.json");
+    
+    // Extraction de la saison par défaut si non spécifiée
+    $saison_par_defaut = $config_global['saison_par_defaut'] ?? '2025_2026';
+    if ($saison === null) {
+        $saison = $saison_par_defaut;
+    }
+    
+    // Sécurité API : On utilise le flag par défaut pour savoir quelle saison est "active"
+    $saison_actuelle = $saison_par_defaut; 
+    
+    // Vérification de l'existence de la saison demandée dans le JSON
+    if (!isset($config_global['saisons'][$saison])) {
+        die("Erreur : La saison '$saison' n'existe pas dans le fichier de configuration.");
+    }
+    
+    $competitions_saison = $config_global['saisons'][$saison];
 
-    $conf = $config_global[$compet_slug];
+    // Extraction des compétitions pour l'accueil si le slug est vide (Utile pour index.php)
+    if ($compet_slug === null) {
+        return [
+            'saison_active' => $saison,
+            'liste_saisons' => array_keys($config_global['saisons']),
+            'competitions' => $competitions_saison
+        ];
+    }
+
+    if (!isset($competitions_saison[$compet_slug])) {
+        die("Erreur : Compétition '$compet_slug' non trouvée pour la saison $saison.");
+    }
+
+    $conf = $competitions_saison[$compet_slug];
     
     // SÉLECTION DE LA PHASE
     if (!isset($conf['phases']) || empty($conf['phases'])) {
-        die("Erreur : Aucune phase configurée pour la catégorie '$compet_slug' dans config.json");
+        die("Erreur : Aucune phase configurée pour la catégorie '$compet_slug' en saison $saison.");
     }
 
     // Si aucune phase n'est demandée, on prend automatiquement la plus récente (la plus élevée)
     if ($phase_demandee === null) {
         $les_phases = array_keys($conf['phases']);
-        rsort($les_phases); // Trie pour avoir la plus grande phase en premier (ex: 2, puis 1)
+        rsort($les_phases);
         $phase_demandee = $les_phases[0];
     }
 
     if (!isset($conf['phases'][$phase_demandee])) {
-        die("Erreur : La phase '$phase_demandee' n'existe pas pour '$compet_slug' dans config.json");
+        die("Erreur : La phase '$phase_demandee' n'existe pas pour '$compet_slug' en saison $saison.");
     }
 
     // On extrait la configuration de la phase sélectionnée
     $api = $conf['phases'][$phase_demandee];
-    $api['phase_id'] = $phase_demandee; // On injecte l'ID de la phase pour l'URL API
+    $api['phase_id'] = $phase_demandee;
     
-    // Le nom du cache intègre désormais obligatoirement le numéro de la phase
-    $cache_file = "cache_{$compet_slug}_phase{$api['phase_id']}.json";
+    // Le nom du cache intègre désormais la saison ET le numéro de la phase
+    $cache_file = "cache_{$saison}_{$compet_slug}_phase{$api['phase_id']}.json";
     
     // =============================================================
-    // 2. VÉRIFICATION DU CACHE (2 Heures)
+    // 2. VÉRIFICATION DU CACHE & LOGIQUE DE GEL
     // =============================================================
     $duree_cache = 2 * 3600; 
     $doit_telecharger = false;
 
-    if (!file_exists($cache_file) || (time() - filemtime($cache_file) > $duree_cache)) {
-        $doit_telecharger = true;
+    // RÈGLE D'OR : On ne télécharge QUE si c'est la saison en cours
+    if ($saison === $saison_actuelle) {
+        if (!file_exists($cache_file) || (time() - filemtime($cache_file) > $duree_cache)) {
+            $doit_telecharger = true;
+        }
     }
 
     $alerte_poule_vide = false;
 
     // =============================================================
-    // 3. TÉLÉCHARGEMENT SÉCURISÉ (Version Furtive anti-403 Akamai)
+    // 3. TÉLÉCHARGEMENT SÉCURISÉ (Uniquement pour la saison active)
     // =============================================================
     if ($doit_telecharger) {
         $url = "https://api-dofa.fff.fr/api/compets/{$api['compet_id']}/phases/{$api['phase_id']}/poules/{$api['poule_id']}/resultat";
@@ -97,7 +129,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null) {
     // =============================================================
     // 4. TRAITEMENT ET FORMATAGE
     // =============================================================
-    if (!file_exists($cache_file)) die("Erreur : Cache introuvable pour la Phase " . $api['phase_id']);
+    if (!file_exists($cache_file)) die("Erreur : Données introuvables en cache pour la saison $saison (Phase " . $api['phase_id'] . ")");
     
     $json_content = file_get_contents($cache_file);
     $data = json_decode($json_content, true);
@@ -113,7 +145,6 @@ function recupererDonnees($compet_slug, $phase_demandee = null) {
     $titre_dynamique = $conf['titre'];
     if (!empty($matches[0]['poule']['name'])) {
         $poule_reelle = $matches[0]['poule']['name'];
-        // Si la poule n'est pas déjà écrite dans le titre, on l'ajoute juste en mémoire pour show.php
         if (strpos(strtoupper($titre_dynamique), strtoupper($poule_reelle)) === false) {
             $titre_dynamique .= " - " . $poule_reelle;
         }
@@ -229,7 +260,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null) {
             'home_logo' => $match['home']['club']['logo'] ?? '',
             'away_logo' => $match['away']['club']['logo'] ?? '',
             'score_txt' => ($home_score >= 0) ? "$home_score - $away_score" : "vs",
-            'is_forfait' => $is_forfait,
+            'is_forfeit' => $is_forfait,
             'style_home' => $style_home,
             'style_away' => $style_away,
             'status' => [
@@ -254,13 +285,15 @@ function recupererDonnees($compet_slug, $phase_demandee = null) {
     sort($liste_phases);
 
     return [
-        'titre' => $titre_dynamique, // On renvoie le titre avec la bonne poule calculée à la volée
+        'titre' => $titre_dynamique,
         'last_update' => $last_update,
         'equipe_cible' => $equipe_cible,
         'classement' => $classement,
         'matches' => $matches_formatted,
         'poule_vide' => $alerte_poule_vide,
         'phase_active' => $api['phase_id'], 
-        'liste_phases' => $liste_phases     
+        'liste_phases' => $liste_phases,
+        'saison_active' => $saison,
+        'liste_saisons' => array_keys($config_global['saisons'])
     ];
 }

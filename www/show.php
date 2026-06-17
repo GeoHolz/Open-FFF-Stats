@@ -2,16 +2,23 @@
 // show.php
 require_once 'get_data.php';
 
-// Récupération des paramètres
-$compet = isset($_GET['compet']) ? strtolower($_GET['compet']) : 'u11';
-$phase = isset($_GET['phase']) ? $_GET['phase'] : null;
+// 1. Récupération des paramètres de l'URL
+$compet_slug   = $_GET['compet'] ?? 'u11';
+$phase_demandee = isset($_GET['phase']) ? (int)$_GET['phase'] : null;
+$saison_demandee = $_GET['saison'] ?? '2025_2026'; // Saison par défaut
 
-// Appel de la fonction avec la catégorie et la phase demandée
-$donnees = recupererDonnees($compet, $phase);
+// 2. Appel de notre fonction mise à jour
+$data = recupererDonnees($compet_slug, $phase_demandee, $saison_demandee);
 
-$classement = $donnees['classement'];
-$matches = $donnees['matches'];
-$equipe_cible = $donnees['equipe_cible'];
+// On extrait les variables pour l'affichage
+$titre         = $data['titre'];
+$last_update   = $data['last_update'];
+$equipe_cible  = $data['equipe_cible'];
+$classement    = $data['classement'];
+$matches       = $data['matches'];
+$poule_vide    = $data['poule_vide'];
+$phase_active  = $data['phase_active'];
+$liste_phases  = $data['liste_phases'];
 ?>
 
 <!DOCTYPE html>
@@ -19,7 +26,7 @@ $equipe_cible = $donnees['equipe_cible'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $donnees['titre']; ?></title> 
+    <title><?php echo $titre; ?></title> 
     <link rel="stylesheet" href="style.css">
 <style>
     .table-responsive table {
@@ -127,24 +134,24 @@ $equipe_cible = $donnees['equipe_cible'];
 <body>
     <div class="container">
     
-    <a href="index.php" class="back-button">← Retour à l'accueil</a>
+    <a href="index.php?saison=<?php echo $saison_demandee; ?>" class="back-button">← Retour à l'accueil</a>
 
-    <h1><?php echo $donnees['titre']; ?></h1> 
+    <h1><?php echo $titre; ?></h1> 
 
-    <p>Mise à jour FFF : <?php echo $donnees['last_update']; ?></p>
+    <p>Mise à jour FFF : <?php echo $last_update; ?></p>
 
-    <?php if (isset($donnees['poule_vide']) && $donnees['poule_vide'] === true): ?>
+    <?php if (isset($poule_vide) && $poule_vide === true): ?>
         <div style="background: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 10px; border-radius: 6px; margin-bottom: 20px; font-size: 0.9em; font-weight: bold;">
             ⚠️ Note : L'API FFF a renvoyé des données vides (Poule modifiée ou terminée). Affichage des dernières données du cache préservées.
         </div>
     <?php endif; ?>
 
-    <?php if (isset($donnees['liste_phases']) && count($donnees['liste_phases']) > 1): ?>
+    <?php if (isset($liste_phases) && count($liste_phases) > 1): ?>
         <div class="phase-tabs">
-            <?php foreach ($donnees['liste_phases'] as $p): 
-                $isActive = ($p == $donnees['phase_active']) ? 'active' : '';
+            <?php foreach ($liste_phases as $p): 
+                $isActive = ($p == $phase_active) ? 'active' : '';
             ?>
-                <a href="show.php?compet=<?php echo $compet; ?>&phase=<?php echo $p; ?>" class="phase-tab <?php echo $isActive; ?>">
+                <a href="show.php?compet=<?php echo $compet_slug; ?>&phase=<?php echo $p; ?>&saison=<?php echo $saison_demandee; ?>" class="phase-tab <?php echo $isActive; ?>">
                     Phase <?php echo $p; ?> <?php echo ($p == 1) ? '(Automne)' : '(Printemps)'; ?>
                 </a>
             <?php endforeach; ?>
@@ -210,7 +217,7 @@ $equipe_cible = $donnees['equipe_cible'];
                     </td>
                     <td style="text-align: center; font-weight: bold; background:#fdfdfd;">
                         <?php echo $m['score_txt']; ?>
-                        <?php if ($m['is_forfait']): ?>
+                        <?php if ($m['is_forfeit']): ?>
                             <br><small style="color:red; font-size:0.7em; display:block;">FORFAIT</small>
                         <?php endif; ?>
                     </td>
@@ -295,7 +302,7 @@ $equipe_cible = $donnees['equipe_cible'];
                     
                     <td style="font-weight: bold; text-align:center;">
                         <?php echo $m['score_txt']; ?>
-                        <?php if ($m['is_forfait']): ?>
+                        <?php if ($m['is_forfeit']): ?>
                             <div style="color:red; font-size:0.7em; font-weight:normal;">Forfait</div>
                         <?php endif; ?>
                     </td>

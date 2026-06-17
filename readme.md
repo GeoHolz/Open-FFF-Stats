@@ -11,6 +11,7 @@ Ce projet utilise l'API `api-dofa.fff.fr` pour récupérer les données en temps
 
 * 🔄 **Cache Intelligent** : Les données sont stockées localement et mises à jour seulement toutes les 4 heures pour éviter de surcharger l'API.
 * 🛠️ **Gestion Multi-Phases** : Support natif des championnats à plusieurs phases (Automne / Printemps). L'interface génère automatiquement des onglets dynamiques pour naviguer entre les phases.
+* 🛡️ **Gel Automatique des Archives** : Pour les saisons passées, le script coupe définitivement les appels cURL vers la FFF. Les données sont lues instantanément depuis le cache local, supprimant tout risque de blocage ou d'altération des scores historiques.
 * 📱 **Responsive Design** : Affichage optimisé pour mobile avec colonnes figées (Sticky columns) pour une lecture facile des classements.
 * 🎯 **Focus Équipe** : Coloration automatique (Vert/Jaune/Rouge) des résultats pour votre club.
 * ⚙️ **Multi-Compétitions** : Configuration centralisée via un simple fichier JSON pour gérer plusieurs catégories (U10, U11, U12, etc.).
@@ -43,21 +44,40 @@ Ce projet utilise l'API `api-dofa.fff.fr` pour récupérer les données en temps
 Structure du config.json
 ```json
 {
-    "u10": {
-        "titre": "Classement U10 - POULE R",
-        "equipe_cible": "WEPPES ES",
-        "phases": {
-            "1": {
-                "compet_id": "444088",
-                "poule_id": "11",
-                "date_start": "2025-09-01",
-                "date_end": "2025-12-31"
-            },
-            "2": {
-                "compet_id": "444091",
-                "poule_id": "18",
-                "date_start": "2026-01-01",
-                "date_end": "2026-08-08"
+    "saison_par_defaut": "2025_2026",
+    "saisons": {
+        "2025_2026": {
+            "u10": {
+                "titre": "Classement U10",
+                "equipe_cible": "WEPPES ES",
+                "phases": {
+                    "1": {
+                        "compet_id": "444091",
+                        "poule_id": "14",
+                        "date_start": "2025-09-01",
+                        "date_end": "2025-12-31"
+                    },
+                    "2": {
+                        "compet_id": "444091",
+                        "poule_id": "18",
+                        "date_start": "2026-01-01",
+                        "date_end": "2026-08-08"
+                    }
+                }
+            }
+        },
+        "2026_2027": {
+            "u10": {
+                "titre": "Classement U10",
+                "equipe_cible": "WEPPES ES",
+                "phases": {
+                    "1": {
+                        "compet_id": "444XXX",
+                        "poule_id": "XX",
+                        "date_start": "2026-09-01",
+                        "date_end": "2026-12-31"
+                    }
+                }
             }
         }
     }
@@ -65,9 +85,9 @@ Structure du config.json
 ```
 ### Utilisation
 
-* Accueil : Accédez à index.php pour voir les boutons de toutes vos compétitions.
-* Affichage Direct : Utilisez show.php?compet=NOM_CLE (ex: show.php?compet=u11).
-* Navigation par Phase : Par défaut, le script charge la phase la plus récente. Pour forcer une phase spécifique, passez le paramètre dans l'URL : show.php?compet=u10&phase=1.
+* Accueil (index.php) : Portail d'accueil dynamique équipé d'un sélecteur de saison. Il génère automatiquement les boutons d'accès rapide selon la saison choisie.
+* Affichage Direct (show.php) : Affiche les tableaux (Classement calculé à la volée, Calendrier focus club et détails de tous les matchs). Exemple : show.php?compet=u10&saison=2025_2026.
+* Navigation par Phase : Par défaut, le script charge la phase la plus récente de la saison demandée. Pour forcer une phase spécifique, passez le paramètre dans l'URL : show.php?compet=u10&phase=1&saison=2025_2026.
 
 ### 🧠 Vibe Coding & Conception
 Ce projet est fièrement développé en Vibe Coding 🏄‍♂️ !
