@@ -1,7 +1,7 @@
 <?php
 // get_data.php
 
-function recupererDonnees($compet_slug) {
+function recupererDonnees($compet_slug, $phase_demandee = null) {
     // =============================================================
     // 1. CHARGEMENT CONFIGURATION
     // =============================================================
@@ -12,10 +12,29 @@ function recupererDonnees($compet_slug) {
     if (!isset($config_global[$compet_slug])) die("Erreur : Compétition '$compet_slug' non trouvée dans config.json");
 
     $conf = $config_global[$compet_slug];
-    $api = $conf['api'];
     
-    $phase_suffix = isset($api['phase_id']) ? '_phase' . $api['phase_id'] : '';
-    $cache_file = "cache_{$compet_slug}{$phase_suffix}.json";
+    // SÉLECTION DE LA PHASE
+    if (!isset($conf['phases']) || empty($conf['phases'])) {
+        die("Erreur : Aucune phase configurée pour la catégorie '$compet_slug' dans config.json");
+    }
+
+    // Si aucune phase n'est demandée, on prend automatiquement la plus récente (la plus élevée)
+    if ($phase_demandee === null) {
+        $les_phases = array_keys($conf['phases']);
+        rsort($les_phases); // Trie pour avoir la plus grande phase en premier (ex: 2, puis 1)
+        $phase_demandee = $les_phases[0];
+    }
+
+    if (!isset($conf['phases'][$phase_demandee])) {
+        die("Erreur : La phase '$phase_demandee' n'existe pas pour '$compet_slug' dans config.json");
+    }
+
+    // On extrait la configuration de la phase sélectionnée
+    $api = $conf['phases'][$phase_demandee];
+    $api['phase_id'] = $phase_demandee; // On injecte l'ID de la phase pour l'URL API
+    
+    // Le nom du cache intègre désormais obligatoirement le numéro de la phase
+    $cache_file = "cache_{$compet_slug}_phase{$api['phase_id']}.json";
     
     // =============================================================
     // 2. VÉRIFICATION DU CACHE (2 Heures)
@@ -27,8 +46,10 @@ function recupererDonnees($compet_slug) {
         $doit_telecharger = true;
     }
 
+    $alerte_poule_vide = false;
+
     // =============================================================
-    // 3. TÉLÉCHARGEMENT SÉCURISÉ
+    // 3. TÉLÉCHARGEMENT SÉCURISÉ (Version Furtive anti-403 Akamai)
     // =============================================================
     if ($doit_telecharger) {
         $url = "https://api-dofa.fff.fr/api/compets/{$api['compet_id']}/phases/{$api['phase_id']}/poules/{$api['poule_id']}/resultat";
@@ -37,27 +58,46 @@ function recupererDonnees($compet_slug) {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36');
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+        curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate, br');
+
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
+            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3',
+            'Connection: keep-alive',
+            'Upgrade-Insecure-Requests: 1',
+            'Sec-Fetch-Dest: document',
+            'Sec-Fetch-Mode: navigate',
+            'Sec-Fetch-Site: none',
+            'Sec-Fetch-User: ?1'
+        ]);
+
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         
         $json_api = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($json_api && $http_code === 200) {
+        if ($json_api && $http_code === 200 && strpos($json_api, '<!doctype html>') === false) {
             $data_verif = json_decode($json_api, true);
             if (isset($data_verif['hydra:member']) && count($data_verif['hydra:member']) > 0) {
                 file_put_contents($cache_file, $json_api);
             } elseif (file_exists($cache_file)) {
+                $alerte_poule_vide = true;
                 touch($cache_file);
             }
+        } elseif (file_exists($cache_file)) {
+            $alerte_poule_vide = true;
+            touch($cache_file); 
         }
     }
 
     // =============================================================
     // 4. TRAITEMENT ET FORMATAGE
     // =============================================================
-    if (!file_exists($cache_file)) die("Erreur : Cache introuvable.");
+    if (!file_exists($cache_file)) die("Erreur : Cache introuvable pour la Phase " . $api['phase_id']);
     
     $json_content = file_get_contents($cache_file);
     $data = json_decode($json_content, true);
@@ -70,20 +110,16 @@ function recupererDonnees($compet_slug) {
     $matches = $data['hydra:member'];
 
     // --- AUTO-CORRECTION DU TITRE (POULE) ---
-    // On récupère le nom de la poule réelle dans le premier match
     if (!empty($matches[0]['poule']['name'])) {
-        $poule_reelle = $matches[0]['poule']['name']; // ex: "POULE J"
+        $poule_reelle = $matches[0]['poule']['name'];
         
-        // Si le titre enregistré dans config.json ne contient pas le nom de la poule réelle
         if (strpos(strtoupper($conf['titre']), strtoupper($poule_reelle)) === false) {
             $categorie = strtoupper($compet_slug);
             $nouveau_titre = "Classement $categorie - $poule_reelle";
             
-            // Mise à jour de la config et sauvegarde physique
             $config_global[$compet_slug]['titre'] = $nouveau_titre;
             file_put_contents('config.json', json_encode($config_global, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
             
-            // Mise à jour de la variable locale pour l'affichage courant
             $conf['titre'] = $nouveau_titre;
         }
     }
@@ -97,13 +133,11 @@ function recupererDonnees($compet_slug) {
     foreach ($matches as $match) {
         if (!isset($match['home']) || !isset($match['away'])) continue;
 
-        // --- IDENTIFICATION DES ÉQUIPES ---
         $home_team = $match['home']['short_name'] ?? 'Inconnu';
         $away_team = $match['away']['short_name'] ?? 'Inconnu';
         $home_score = isset($match['home_score']) ? (int)$match['home_score'] : -1;
         $away_score = isset($match['away_score']) ? (int)$match['away_score'] : -1;
         
-        // --- GESTION DES NUMÉROS D'ÉQUIPES (Modulo 10 pour U10/U12) ---
         $home_code = $match['home']['code'] ?? 0;
         $away_code = $match['away']['code'] ?? 0;
         $home_num = ($home_code > 0) ? ($home_code % 10) : null;
@@ -112,12 +146,10 @@ function recupererDonnees($compet_slug) {
         $home_display = $home_num ? $home_team . ' ' . $home_num : $home_team;
         $away_display = $away_num ? $away_team . ' ' . $away_num : $away_team;
 
-        // --- DÉTECTION DES FORFAITS (FM/FG) ---
         $is_forfait_home = in_array($match['home_resu'] ?? '', ['FM', 'FG']);
         $is_forfait_away = in_array($match['away_resu'] ?? '', ['FM', 'FG']);
         $is_forfait = ($is_forfait_home || $is_forfait_away);
 
-        // --- 1. GESTION DES DATES ---
         $date_api = $match['date'] ?? null;
         $status_label = $match['status_label'] ?? '';
         $display_date = '';
@@ -130,7 +162,6 @@ function recupererDonnees($compet_slug) {
             $display_date = date("d/m/Y", strtotime($date_api));
         }
 
-        // --- 2. LIEN CALENDRIER ---
         $google_cal_link = "";
         if ($display_date !== 'REPORTÉ' && !empty($date_pour_tri)) {
             $heure_format = str_replace(['H', 'h'], ':', $match['time'] ?? '00:00');
@@ -147,7 +178,6 @@ function recupererDonnees($compet_slug) {
             }
         }
 
-        // --- 3. CALCUL DU CLASSEMENT ---
         $teams_init = [
             $home_team => ['logo' => $match['home']['club']['logo'] ?? '', 'display' => $home_display],
             $away_team => ['logo' => $match['away']['club']['logo'] ?? '', 'display' => $away_display]
@@ -177,7 +207,6 @@ function recupererDonnees($compet_slug) {
             }
         }
 
-        // --- 4. STYLES ---
         $style_home = ''; $style_away = '';
         if ($home_score >= 0 && $away_score >= 0) {
             $colors = ['win' => '#d4edda', 'lose' => '#f8d7da', 'draw' => '#fff3cd'];
@@ -193,7 +222,6 @@ function recupererDonnees($compet_slug) {
             }
         }
 
-        // --- 5. ASSEMBLAGE FINAL ---
         $matches_formatted[] = [
             'raw_date' => substr($date_pour_tri ?? '', 0, 10),
             'display_date' => $display_date,
@@ -210,7 +238,7 @@ function recupererDonnees($compet_slug) {
             'style_home' => $style_home,
             'style_away' => $style_away,
             'status' => [
-                'label' => ($home_score >= 0) ? ($is_forfait ? 'Forfait' : 'Terminé') : (($display_date === 'REPORTÉ') ? 'Reporté' : 'À venir'), 
+                'label' => ($home_score >= 0) ? ($is_forfait ? 'Forfait' : 'Terminé') : (($display_date === 'REPORTÉ' ? 'Reporté' : 'À venir')), 
                 'class' => ($home_score >= 0) ? 'badge-finished' : (($display_date === 'REPORTÉ') ? 'badge-postponed' : 'badge-upcoming')
             ],
             'vainqueur' => ($home_score >= 0) ? (($home_score > $away_score ? $home_team : ($away_score > $home_score ? $away_team : 'Nul'))) : 'À venir',
@@ -219,7 +247,6 @@ function recupererDonnees($compet_slug) {
         ];
     }
 
-    // --- D. TRI FINAL ---
     foreach ($classement as $nom_brut => $vals) { 
         $classement[$nom_brut]['Diff'] = $vals['BP'] - $vals['BC']; 
     }
@@ -228,11 +255,19 @@ function recupererDonnees($compet_slug) {
         return ($b['Points'] <=> $a['Points']) ?: ($b['Diff'] <=> $a['Diff']) ?: ($b['BP'] <=> $a['BP']); 
     });
 
+    // On trie la liste des phases pour l'affichage des boutons (1, 2...)
+    $liste_phases = array_keys($conf['phases']);
+    sort($liste_phases);
+
     return [
         'titre' => $conf['titre'],
         'last_update' => $last_update,
         'equipe_cible' => $equipe_cible,
         'classement' => $classement,
-        'matches' => $matches_formatted
+        'matches' => $matches_formatted,
+        'poule_vide' => $alerte_poule_vide,
+        // NOUVELLES ENTRÉES TRANSMISES POUR LES ONGLETS :
+        'phase_active' => $api['phase_id'], 
+        'liste_phases' => $liste_phases     
     ];
 }

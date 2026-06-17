@@ -8,7 +8,7 @@ www/cache*
 # Dossiers
 www/archives/
 docker-compose.yml
-
+www.OLD/
 # Scripts et logs
 *.sh
 *.log

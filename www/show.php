@@ -4,7 +4,10 @@ require_once 'get_data.php';
 
 // Récupération des paramètres
 $compet = isset($_GET['compet']) ? strtolower($_GET['compet']) : 'u11';
-$donnees = recupererDonnees($compet);
+$phase = isset($_GET['phase']) ? $_GET['phase'] : null;
+
+// Appel de la fonction avec la catégorie et la phase demandée
+$donnees = recupererDonnees($compet, $phase);
 
 $classement = $donnees['classement'];
 $matches = $donnees['matches'];
@@ -54,7 +57,6 @@ $equipe_cible = $donnees['equipe_cible'];
         font-size: 11px !important;
         margin-left: 4px;
         vertical-align: middle;
-        /* On s'assure qu'elle garde son style d'origine */
         position: relative;
         display: inline-block;
         background-color: #1a567d;
@@ -63,6 +65,35 @@ $equipe_cible = $donnees['equipe_cible'];
         text-align: center;
         cursor: help;
         font-weight: bold;
+    }
+
+    /* --- STYLES POUR LES ONGLETS DE PHASES --- */
+    .phase-tabs {
+        display: flex;
+        gap: 10px;
+        margin: 15px 0 20px 0;
+    }
+
+    .phase-tab {
+        padding: 8px 14px;
+        background: #f4f4f4;
+        color: #333;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: bold;
+        font-size: 0.9em;
+        border: 1px solid #ddd;
+        transition: all 0.2s ease;
+    }
+
+    .phase-tab:hover {
+        background: #e8e8e8;
+    }
+
+    .phase-tab.active {
+        background: #1a567d;
+        color: white;
+        border-color: #1a567d;
     }
 
     @media screen and (max-width: 600px) {
@@ -79,6 +110,17 @@ $equipe_cible = $donnees['equipe_cible'];
         .team-wrap {
             font-size: 0.95em;
         }
+
+        .phase-tabs {
+            gap: 6px;
+        }
+        
+        .phase-tab {
+            padding: 6px 10px;
+            font-size: 0.85em;
+            flex: 1;
+            text-align: center;
+        }
     }
 </style>
 </head>
@@ -88,7 +130,26 @@ $equipe_cible = $donnees['equipe_cible'];
     <a href="index.php" class="back-button">← Retour à l'accueil</a>
 
     <h1><?php echo $donnees['titre']; ?></h1> 
+
     <p>Mise à jour FFF : <?php echo $donnees['last_update']; ?></p>
+
+    <?php if (isset($donnees['poule_vide']) && $donnees['poule_vide'] === true): ?>
+        <div style="background: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 10px; border-radius: 6px; margin-bottom: 20px; font-size: 0.9em; font-weight: bold;">
+            ⚠️ Note : L'API FFF a renvoyé des données vides (Poule modifiée ou terminée). Affichage des dernières données du cache préservées.
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($donnees['liste_phases']) && count($donnees['liste_phases']) > 1): ?>
+        <div class="phase-tabs">
+            <?php foreach ($donnees['liste_phases'] as $p): 
+                $isActive = ($p == $donnees['phase_active']) ? 'active' : '';
+            ?>
+                <a href="show.php?compet=<?php echo $compet; ?>&phase=<?php echo $p; ?>" class="phase-tab <?php echo $isActive; ?>">
+                    Phase <?php echo $p; ?> <?php echo ($p == 1) ? '(Automne)' : '(Printemps)'; ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 
     <div class="table-responsive">   
         <table>
