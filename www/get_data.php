@@ -109,18 +109,13 @@ function recupererDonnees($compet_slug, $phase_demandee = null) {
 
     $matches = $data['hydra:member'];
 
-    // --- AUTO-CORRECTION DU TITRE (POULE) ---
+    // --- CORRECTION DU TITRE UNIQUE POUR L'AFFICHAGE EN COURS ---
+    $titre_dynamique = $conf['titre'];
     if (!empty($matches[0]['poule']['name'])) {
         $poule_reelle = $matches[0]['poule']['name'];
-        
-        if (strpos(strtoupper($conf['titre']), strtoupper($poule_reelle)) === false) {
-            $categorie = strtoupper($compet_slug);
-            $nouveau_titre = "Classement $categorie - $poule_reelle";
-            
-            $config_global[$compet_slug]['titre'] = $nouveau_titre;
-            file_put_contents('config.json', json_encode($config_global, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-            
-            $conf['titre'] = $nouveau_titre;
+        // Si la poule n'est pas déjà écrite dans le titre, on l'ajoute juste en mémoire pour show.php
+        if (strpos(strtoupper($titre_dynamique), strtoupper($poule_reelle)) === false) {
+            $titre_dynamique .= " - " . $poule_reelle;
         }
     }
 
@@ -255,18 +250,16 @@ function recupererDonnees($compet_slug, $phase_demandee = null) {
         return ($b['Points'] <=> $a['Points']) ?: ($b['Diff'] <=> $a['Diff']) ?: ($b['BP'] <=> $a['BP']); 
     });
 
-    // On trie la liste des phases pour l'affichage des boutons (1, 2...)
     $liste_phases = array_keys($conf['phases']);
     sort($liste_phases);
 
     return [
-        'titre' => $conf['titre'],
+        'titre' => $titre_dynamique, // On renvoie le titre avec la bonne poule calculée à la volée
         'last_update' => $last_update,
         'equipe_cible' => $equipe_cible,
         'classement' => $classement,
         'matches' => $matches_formatted,
         'poule_vide' => $alerte_poule_vide,
-        // NOUVELLES ENTRÉES TRANSMISES POUR LES ONGLETS :
         'phase_active' => $api['phase_id'], 
         'liste_phases' => $liste_phases     
     ];
