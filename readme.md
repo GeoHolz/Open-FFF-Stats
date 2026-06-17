@@ -10,6 +10,7 @@ Ce projet utilise l'API `api-dofa.fff.fr` pour récupérer les données en temps
 ## ✨ Fonctionnalités
 
 * 🔄 **Cache Intelligent** : Les données sont stockées localement et mises à jour seulement toutes les 4 heures pour éviter de surcharger l'API.
+* 🛠️ **Gestion Multi-Phases** : Support natif des championnats à plusieurs phases (Automne / Printemps). L'interface génère automatiquement des onglets dynamiques pour naviguer entre les phases.
 * 📱 **Responsive Design** : Affichage optimisé pour mobile avec colonnes figées (Sticky columns) pour une lecture facile des classements.
 * 🎯 **Focus Équipe** : Coloration automatique (Vert/Jaune/Rouge) des résultats pour votre club.
 * ⚙️ **Multi-Compétitions** : Configuration centralisée via un simple fichier JSON pour gérer plusieurs catégories (U10, U11, U12, etc.).
@@ -42,15 +43,22 @@ Ce projet utilise l'API `api-dofa.fff.fr` pour récupérer les données en temps
 Structure du config.json
 ```json
 {
-    "u11": {
-        "titre": "Classement U11 - Poule K",
+    "u10": {
+        "titre": "Classement U10 - POULE R",
         "equipe_cible": "WEPPES ES",
-        "api": {
-            "compet_id": "444088",
-            "phase_id": "1",
-            "poule_id": "11",
-            "date_start": "2025-09-01",
-            "date_end": "2026-02-01"
+        "phases": {
+            "1": {
+                "compet_id": "444088",
+                "poule_id": "11",
+                "date_start": "2025-09-01",
+                "date_end": "2025-12-31"
+            },
+            "2": {
+                "compet_id": "444091",
+                "poule_id": "18",
+                "date_start": "2026-01-01",
+                "date_end": "2026-08-08"
+            }
         }
     }
 }
@@ -59,6 +67,14 @@ Structure du config.json
 
 * Accueil : Accédez à index.php pour voir les boutons de toutes vos compétitions.
 * Affichage Direct : Utilisez show.php?compet=NOM_CLE (ex: show.php?compet=u11).
+* Navigation par Phase : Par défaut, le script charge la phase la plus récente. Pour forcer une phase spécifique, passez le paramètre dans l'URL : show.php?compet=u10&phase=1.
+
+### 🧠 Vibe Coding & Conception
+Ce projet est fièrement développé en Vibe Coding 🏄‍♂️ !
+
+L'architecture fonctionnelle, la stratégie de contournement du WAF et la direction produit sont pilotées par l'humain, tandis que l'implémentation technique, les optimisations algorithmiques (calculs des points, bris d'égalité), le refactoring CSS responsive et la gestion fine du cURL ont été entièrement générés et ajustés en collaboration avec une Intelligence Artificielle (Gemini).
+
+Cette approche permet de maintenir un code moderne, hautement optimisé et développé à la vitesse de la pensée.
 
 ### Structure Technique
 
