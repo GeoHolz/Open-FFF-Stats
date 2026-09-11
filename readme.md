@@ -5,7 +5,7 @@ Système dynamique permettant d'afficher les classements, calendriers et résult
 Ce projet utilise l'API `api-dofa.fff.fr` pour récupérer les données en temps réel.
 
 <img src="img/example.png" width="400" alt="Capture du classement">
----
+
 
 ## ✨ Fonctionnalités
 
@@ -17,7 +17,7 @@ Ce projet utilise l'API `api-dofa.fff.fr` pour récupérer les données en temps
 * 📱 **Responsive Design** : Affichage optimisé pour mobile avec colonnes adaptées pour une lecture facile sur smartphone.
 * 🎯 **Focus Équipe** : Coloration automatique (Vert/Jaune/Rouge) des résultats pour votre club et génération automatique de liens **Google Calendar**.
 * ⚙️ **Multi-Compétitions & Multi-Saisons** : Configuration centralisée via un simple fichier JSON agnostique.
----
+
 
 ## 🚀 Installation
 
@@ -84,12 +84,6 @@ Structure du config.json
     }
 }
 ```
-### Utilisation
-
-* Accueil (index.php) : Portail d'accueil équipé d'un sélecteur de saison, de l'accès au calendrier général du club et des boutons vers chaque catégorie.
-* Calendrier Général (global.php) : Vue chronologique complète de toutes les rencontres programmées pour le club sur la saison active.
-* Affichage Catégorie (show.php) : Affiche les tableaux (Classement calculé à la volée, Calendrier focus club et détails des matchs). Si la compétition est configurée avec "mode_calendrier_seul": true, seuls les matchs du club s'affichent de façon épurée.
-* Navigation par Phase : Génération automatique d'onglets pour basculer entre la Phase 1 (Automne) et la Phase 2 (Printemps).
 
 ### 🛠️ Structure du Projet
 
