@@ -22,51 +22,16 @@ $nom_club_complet = $donnees_globales['club']['nom_complet'] ?? 'Mon Club';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calendrier Général - <?php echo htmlspecialchars($nom_club_court); ?></title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .table-responsive table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th:not(.col-equipe), 
-        td:not(.col-equipe) {
-            width: 1%; 
-            white-space: nowrap; 
-            padding: 8px 10px;
-            text-align: center;
-        }
-
-        .team-wrap {
-            white-space: normal !important; 
-            line-height: 1.3;               
-            width: 35%;                     
-        }
-
-        .badge-cat {
-            background-color: #1a567d;
-            color: white;
-            padding: 3px 6px;
-            border-radius: 3px;
-            font-size: 0.8em;
-            font-weight: bold;
-            display: inline-block;
-            margin-bottom: 2px;
-        }
-
-        @media screen and (max-width: 600px) {
-            table { font-size: 0.85em; }
-            th, td { padding: 8px 4px; }
-            .team-wrap { font-size: 0.95em; }
-        }
-    </style>
 </head>
 <body>
     <div class="container">
         
-        <a href="index.php?saison=<?php echo $saison_active; ?>" class="back-button">← Retour à l'accueil</a>
+        <div class="page-header">
+            <a href="index.php?saison=<?php echo $saison_active; ?>" class="back-button-abs">← Retour</a>
+            <h1>Calendrier Championnat <?php echo htmlspecialchars($nom_club_court); ?></h1> 
+        </div>
 
-        <h1>📅 Calendrier Général <?php echo htmlspecialchars($nom_club_court); ?></h1> 
-        <p>Ensemble des rencontres programmées pour la saison <strong><?php echo str_replace('_', ' - ', $saison_active); ?></strong></p>
+        <p style="text-align: center;">Ensemble des rencontres programmées pour la saison <strong><?php echo str_replace('_', ' - ', $saison_active); ?></strong></p>
 
         <?php if (empty($matches)): ?>
             <p style="text-align: center; margin: 40px 0; color: #888;">Aucun match trouvé pour cette saison.</p>
@@ -92,11 +57,14 @@ $nom_club_complet = $donnees_globales['club']['nom_complet'] ?? 'Mon Club';
                             $current_bg = ($current_bg === '') ? 'background-color: #f9f9f9;' : '';
                         }
                         $previous_date = $m['raw_date'];
+
+                        // Classe CSS spécifique à la catégorie (ex: cat-u10)
+                        $cat_class = 'cat-' . strtolower($m['categorie']);
                     ?>
                         <tr style="<?php echo $current_bg; ?>">
                             <!-- Colonne Catégorie + Date + Heure -->
                             <td style="font-size: 0.9em; text-align: center;">
-                                <span class="badge-cat"><?php echo $m['categorie']; ?></span><br>
+                                <span class="badge-cat <?php echo $cat_class; ?>"><?php echo $m['categorie']; ?></span><br>
                                 <strong><?php echo $m['display_date']; ?></strong><br>
                                 <span style="font-size: 0.85em; color: #666;"><?php echo $m['heure']; ?></span>
                                 

@@ -5,9 +5,9 @@ require_once 'get_data.php';
 // 1. Récupération des paramètres de l'URL
 $compet_slug    = $_GET['compet'] ?? 'u11';
 $phase_demandee = isset($_GET['phase']) ? (int)$_GET['phase'] : null;
-$saison_demandee = $_GET['saison'] ?? '2025_2026'; // Saison par défaut
+$saison_demandee = $_GET['saison'] ?? '2025_2026';
 
-// 2. Appel de notre fonction mise à jour
+// 2. Appel de notre fonction
 $data = recupererDonnees($compet_slug, $phase_demandee, $saison_demandee);
 
 // On extrait les variables pour l'affichage
@@ -36,157 +36,18 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $titre; ?></title> 
+    <title><?php echo htmlspecialchars($titre); ?></title> 
     <link rel="stylesheet" href="style.css">
-<style>
-    .table-responsive table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    /* On serre les colonnes de chiffres au maximum */
-    th:not(.col-equipe), 
-    td:not(.col-equipe) {
-        width: 1%; 
-        white-space: nowrap; 
-        padding: 8px 10px;
-        text-align: center;
-    }
-
-    /* La colonne équipe prend le reste de l'espace */
-    .col-equipe {
-        width: auto;
-        text-align: left !important;
-    }
-
-    /* On autorise le retour à la ligne pour les noms d'équipes dans les matchs */
-    .team-wrap {
-        white-space: normal !important; 
-        line-height: 1.3;               
-        width: 40%;                     
-    }
-
-    /* --- REDIMENSIONNEMENT DE LA PASTILLE INFO --- */
-    .info-tooltip {
-        width: 16px !important;
-        height: 16px !important;
-        line-height: 16px !important;
-        font-size: 11px !important;
-        margin-left: 4px;
-        vertical-align: middle;
-        position: relative;
-        display: inline-block;
-        background-color: #1a567d;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        cursor: help;
-        font-weight: bold;
-    }
-
-    /* --- STYLES POUR LES ONGLETS DE PHASES --- */
-    .phase-tabs {
-        display: flex;
-        gap: 10px;
-        margin: 15px 0 10px 0;
-    }
-
-    .phase-tab {
-        padding: 8px 14px;
-        background: #f4f4f4;
-        color: #333;
-        text-decoration: none;
-        border-radius: 5px;
-        font-weight: bold;
-        font-size: 0.9em;
-        border: 1px solid #ddd;
-        transition: all 0.2s ease;
-    }
-
-    .phase-tab:hover {
-        background: #e8e8e8;
-    }
-
-    .phase-tab.active {
-        background: #1a567d;
-        color: white;
-        border-color: #1a567d;
-    }
-
-    /* --- STYLE DU MENU DÉROULANT CALENDRIER --- */
-    details.sync-accordion {
-        margin: 15px 0 20px 0;
-    }
-
-    details.sync-accordion summary {
-        display: inline-flex;
-        align-items: center;
-        padding: 8px 14px;
-        background-color: #1a567d;
-        color: white;
-        font-weight: bold;
-        font-size: 0.85em;
-        border-radius: 5px;
-        cursor: pointer;
-        user-select: none;
-        list-style: none;
-    }
-
-    details.sync-accordion summary::-webkit-details-marker {
-        display: none;
-    }
-
-    details.sync-accordion summary:hover {
-        background-color: #134261;
-    }
-
-    .sync-box {
-        margin-top: 10px;
-        background: #f8f9fa;
-        padding: 12px;
-        border-radius: 6px;
-        border: 1px solid #e9ecef;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    @media screen and (max-width: 600px) {
-        table { font-size: 0.85em; }
-        th, td { padding: 8px 4px; }
-        
-        .col-equipe {
-            max-width: 130px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .team-wrap {
-            font-size: 0.95em;
-        }
-
-        .phase-tabs {
-            gap: 6px;
-        }
-        
-        .phase-tab {
-            padding: 6px 10px;
-            font-size: 0.85em;
-            flex: 1;
-            text-align: center;
-        }
-    }
-</style>
 </head>
 <body>
     <div class="container">
     
-    <a href="index.php?saison=<?php echo $saison_demandee; ?>" class="back-button">← Retour à l'accueil</a>
+    <div class="page-header">
+        <a href="index.php?saison=<?php echo $saison_demandee; ?>" class="back-button-abs">← Retour</a>
+        <h1>🏆 <?php echo htmlspecialchars($titre); ?></h1>
+    </div>
 
-    <h1><?php echo $titre; ?></h1> 
-
-    <p>Mise à jour FFF : <?php echo $last_update; ?></p>
+    <p style="text-align: center;">Mise à jour FFF : <?php echo $last_update; ?></p>
 
     <?php if (isset($poule_vide) && $poule_vide === true): ?>
         <div style="background: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 10px; border-radius: 6px; margin-bottom: 20px; font-size: 0.9em; font-weight: bold;">
@@ -208,7 +69,7 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
 
     <!-- BLOC D'ABONNEMENT PLIABLE -->
     <details class="sync-accordion">
-        <summary>🗓️ Synchroniser avec votre calendrier ▼</summary>
+        <summary>🗓️ Synchroniser le calendrier avec votre téléphone ▼</summary>
         <div class="sync-box">
             <!-- Option 1 : Google Calendar (Android / PC) -->
             <a href="<?php echo $google_sub_url; ?>" target="_blank"
@@ -232,6 +93,7 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
 
     <?php if (!$mode_calendrier_seul): ?>
         <!-- 1. TABLEAU DU CLASSEMENT -->
+        <h2>Classement</h2>
         <div class="table-responsive">   
             <table>
                 <thead>
@@ -267,7 +129,7 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
     <?php endif; ?>
 
     <!-- 2. TABLEAU DU CALENDRIER DU CLUB -->
-    <h2>Calendrier : <?php echo htmlspecialchars($equipe_cible); ?></h2>
+    <h2>Calendrier des matchs : <?php echo htmlspecialchars($equipe_cible); ?></h2>
     <div class="table-responsive">
         <table id="equipe_focus">
             <thead>
@@ -319,7 +181,7 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
         <!-- 3. TABLEAU TOUS LES MATCHS (Ignoré si mode_calendrier_seul) -->
         <hr>
 
-        <h2>Tous les matchs (<?php echo count($matches); ?>)</h2>
+        <h2>Tous les matchs de la poule (<?php echo count($matches); ?>)</h2>
         
         <?php 
         $previous_date = null; 
