@@ -9,13 +9,14 @@ Ce projet utilise l'API `api-dofa.fff.fr` pour récupérer les données en temps
 
 ## ✨ Fonctionnalités
 
-* 🔄 **Cache Intelligent** : Les données sont stockées localement et mises à jour seulement toutes les 4 heures pour éviter de surcharger l'API.
+* 🔄 **Cache Intelligent** : Les données sont stockées localement et mises à jour seulement toutes les 2 heures pour éviter de surcharger l'API.
+* 📆 **Calendrier Général Club** : Une vue centralisée (`global.php`) regroupant chronologiquement l'ensemble des rencontres de toutes vos catégories sur une saison.
+* 📌 **Mode Calendrier Seul** : Support des poules géantes ou des catégories sans classement (ex: U14) via la route API dédiée `/matchs` et le paramètre `cl_no`.
 * 🛠️ **Gestion Multi-Phases** : Support natif des championnats à plusieurs phases (Automne / Printemps). L'interface génère automatiquement des onglets dynamiques pour naviguer entre les phases.
 * 🛡️ **Gel Automatique des Archives** : Pour les saisons passées, le script coupe définitivement les appels cURL vers la FFF. Les données sont lues instantanément depuis le cache local, supprimant tout risque de blocage ou d'altération des scores historiques.
-* 📱 **Responsive Design** : Affichage optimisé pour mobile avec colonnes figées (Sticky columns) pour une lecture facile des classements.
-* 🎯 **Focus Équipe** : Coloration automatique (Vert/Jaune/Rouge) des résultats pour votre club.
-* ⚙️ **Multi-Compétitions** : Configuration centralisée via un simple fichier JSON pour gérer plusieurs catégories (U10, U11, U12, etc.).
-
+* 📱 **Responsive Design** : Affichage optimisé pour mobile avec colonnes adaptées pour une lecture facile sur smartphone.
+* 🎯 **Focus Équipe** : Coloration automatique (Vert/Jaune/Rouge) des résultats pour votre club et génération automatique de liens **Google Calendar**.
+* ⚙️ **Multi-Compétitions & Multi-Saisons** : Configuration centralisée via un simple fichier JSON agnostique.
 ---
 
 ## 🚀 Installation
@@ -40,40 +41,40 @@ Ce projet utilise l'API `api-dofa.fff.fr` pour récupérer les données en temps
     * ID Compétition : 444088
     * ID Phase : 1
     * ID Poule : 11
+    * N° d'affiliation Club (cl_no) : 24972 (pour les requêtes ciblées)
 
 Structure du config.json
 ```json
 {
-    "saison_par_defaut": "2025_2026",
+    "club": {
+        "nom_court": "MON CLUB",
+        "nom_complet": "Mon Club FC",
+        "cl_no": "12345"
+    },
+    "saison_par_defaut": "2026_2027",
     "saisons": {
-        "2025_2026": {
-            "u10": {
-                "titre": "Classement U10",
-                "equipe_cible": "WEPPES ES",
+        "2026_2027": {
+            "u11": {
+                "titre": "Classement U11",
+                "equipe_cible": "MON CLUB 1",
                 "phases": {
                     "1": {
-                        "compet_id": "444091",
-                        "poule_id": "14",
-                        "date_start": "2025-09-01",
-                        "date_end": "2025-12-31"
-                    },
-                    "2": {
-                        "compet_id": "444091",
-                        "poule_id": "18",
-                        "date_start": "2026-01-01",
-                        "date_end": "2026-08-08"
+                        "compet_id": "454956",
+                        "poule_id": "12",
+                        "date_start": "2026-09-01",
+                        "date_end": "2026-12-31"
                     }
                 }
-            }
-        },
-        "2026_2027": {
-            "u10": {
-                "titre": "Classement U10",
-                "equipe_cible": "WEPPES ES",
+            },
+            "u14": {
+                "titre": "Calendrier U14",
+                "equipe_cible": "MON CLUB 1",
+                "mode_calendrier_seul": true,
                 "phases": {
                     "1": {
-                        "compet_id": "444XXX",
-                        "poule_id": "XX",
+                        "compet_id": "457577",
+                        "poule_id": "1",
+                        "cl_no": "12345",
                         "date_start": "2026-09-01",
                         "date_end": "2026-12-31"
                     }
@@ -85,9 +86,19 @@ Structure du config.json
 ```
 ### Utilisation
 
-* Accueil (index.php) : Portail d'accueil dynamique équipé d'un sélecteur de saison. Il génère automatiquement les boutons d'accès rapide selon la saison choisie.
-* Affichage Direct (show.php) : Affiche les tableaux (Classement calculé à la volée, Calendrier focus club et détails de tous les matchs). Exemple : show.php?compet=u10&saison=2025_2026.
-* Navigation par Phase : Par défaut, le script charge la phase la plus récente de la saison demandée. Pour forcer une phase spécifique, passez le paramètre dans l'URL : show.php?compet=u10&phase=1&saison=2025_2026.
+* Accueil (index.php) : Portail d'accueil équipé d'un sélecteur de saison, de l'accès au calendrier général du club et des boutons vers chaque catégorie.
+* Calendrier Général (global.php) : Vue chronologique complète de toutes les rencontres programmées pour le club sur la saison active.
+* Affichage Catégorie (show.php) : Affiche les tableaux (Classement calculé à la volée, Calendrier focus club et détails des matchs). Si la compétition est configurée avec "mode_calendrier_seul": true, seuls les matchs du club s'affichent de façon épurée.
+* Navigation par Phase : Génération automatique d'onglets pour basculer entre la Phase 1 (Automne) et la Phase 2 (Printemps).
+
+### 🛠️ Structure du Projet
+
+* index.php : Portail d'accueil lisant la configuration JSON.
+* global.php : Vue réunissant le calendrier global de toutes les équipes du club.
+* show.php : Vue détaillée par catégorie (Classement + Calendrier).
+* get_data.php : Moteur de requête API, de contournement WAF et de gestion du cache local.
+* config.json : Fichier de configuration unique (ignoré par Git).
+* style.css : Thème visuel responsive.
 
 ### 🧠 Vibe Coding & Conception
 Ce projet est fièrement développé en Vibe Coding 🏄‍♂️ !
@@ -95,10 +106,3 @@ Ce projet est fièrement développé en Vibe Coding 🏄‍♂️ !
 L'architecture fonctionnelle, la stratégie de contournement du WAF et la direction produit sont pilotées par l'humain, tandis que l'implémentation technique, les optimisations algorithmiques (calculs des points, bris d'égalité), le refactoring CSS responsive et la gestion fine du cURL ont été entièrement générés et ajustés en collaboration avec une Intelligence Artificielle (Gemini).
 
 Cette approche permet de maintenir un code moderne, hautement optimisé et développé à la vitesse de la pensée.
-
-### Structure Technique
-
-* index.php : Portail d'accueil dynamique lisant le JSON.
-* show.php : Vue des tableaux (Classement, Calendrier équipe, Détails).
-* get_data.php : Moteur de gestion de l'API et du cache.
-* style.css : Thème visuel complet et responsive.
