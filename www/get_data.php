@@ -1,6 +1,45 @@
 <?php
 // get_data.php
+function recupererCalendrierGlobal($saison = null) {
+    $config_file = "config.json";
+    $config_json = @file_get_contents($config_file);
+    if (!$config_json) die("Erreur : Fichier de configuration unique introuvable.");
+    
+    $config_global = json_decode($config_json, true);
+    $saison_active = $saison ?? ($config_global['saison_par_defaut'] ?? '2026_2027');
+    $club_info = $config_global['club'] ?? ['nom_court' => 'MON CLUB', 'nom_complet' => 'Mon Club'];
 
+    if (!isset($config_global['saisons'][$saison_active])) {
+        return [];
+    }
+
+    $competitions = $config_global['saisons'][$saison_active];
+    $tous_les_matchs = [];
+
+    foreach ($competitions as $slug => $conf) {
+        $donnees = recupererDonnees($slug, null, $saison_active);
+        $equipe_cible = $donnees['equipe_cible'];
+
+        foreach ($donnees['matches'] as $m) {
+            if ($m['home'] === $equipe_cible || $m['away'] === $equipe_cible) {
+                $m['categorie'] = strtoupper($slug);
+                $m['titre_categorie'] = $donnees['titre'];
+                $tous_les_matchs[] = $m;
+            }
+        }
+    }
+
+    usort($tous_les_matchs, function($a, $b) {
+        return strcmp($a['raw_date'], $b['raw_date']);
+    });
+
+    return [
+        'club' => $club_info,
+        'saison_active' => $saison_active,
+        'liste_saisons' => array_keys($config_global['saisons']),
+        'matches' => $tous_les_matchs
+    ];
+}
 function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) {
     // =============================================================
     // 1. CHARGEMENT CONFIGURATION UNIQUE (CENTRALISÉE)
@@ -17,7 +56,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
         $saison = $saison_par_defaut;
     }
     
-    // Sécurité API : On utilise le flag par défaut pour savoir quelle saison est "active"
+    // Sécurité API : La saison active pour la FFF est celle définie par défaut dans config.json
     $saison_actuelle = $saison_par_defaut; 
     
     // Vérification de l'existence de la saison demandée dans le JSON
@@ -62,7 +101,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
     $api = $conf['phases'][$phase_demandee];
     $api['phase_id'] = $phase_demandee;
     
-    // Le nom du cache intègre désormais la saison ET le numéro de la phase
+    // Le nom du cache intègre la saison ET le numéro de la phase
     $cache_file = "cache_{$saison}_{$compet_slug}_phase{$api['phase_id']}.json";
     
     // =============================================================
@@ -81,29 +120,37 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
     $alerte_poule_vide = false;
 
     // =============================================================
-    // 3. TÉLÉCHARGEMENT SÉCURISÉ (Uniquement pour la saison active)
+    // 3. TÉLÉCHARGEMENT SÉCURISÉ (BASCULE AUTOMATIQUE RESULTAT / MATCHS)
     // =============================================================
     if ($doit_telecharger) {
-        $url = "https://api-dofa.fff.fr/api/compets/{$api['compet_id']}/phases/{$api['phase_id']}/poules/{$api['poule_id']}/resultat";
-        $url .= "?ma_dat%5Bafter%5D={$api['date_start']}&ma_dat%5Bbefore%5D={$api['date_end']}";
+        // Si cl_no est présent (ex: U14), on utilise la route /matchs avec filtre clNo
+        if (!empty($api['cl_no'])) {
+            $url = "https://api-dofa.fff.fr/api/compets/{$api['compet_id']}/phases/{$api['phase_id']}/poules/{$api['poule_id']}/matchs?clNo={$api['cl_no']}&page=1";
+        } else {
+            // Route classique /resultat pour les autres catégories
+            $url = "https://api-dofa.fff.fr/api/compets/{$api['compet_id']}/phases/{$api['phase_id']}/poules/{$api['poule_id']}/resultat";
+            $url .= "?ma_dat%5Bafter%5D={$api['date_start']}&ma_dat%5Bbefore%5D={$api['date_end']}";
+        }
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-        curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate, br');
+        curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate, br, zstd');
 
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
-            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            'Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3',
-            'Connection: keep-alive',
-            'Upgrade-Insecure-Requests: 1',
-            'Sec-Fetch-Dest: document',
-            'Sec-Fetch-Mode: navigate',
-            'Sec-Fetch-Site: none',
-            'Sec-Fetch-User: ?1'
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            'Accept: application/json, text/plain, */*',
+            'Accept-Language: fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Sec-Ch-Ua: "Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+            'Sec-Ch-Ua-Mobile: ?0',
+            'Sec-Ch-Ua-Platform: "Windows"',
+            'Sec-Fetch-Dest: empty',
+            'Sec-Fetch-Mode: cors',
+            'Sec-Fetch-Site: same-site',
+            'Origin: https://www.fff.fr',
+            'Referer: https://www.fff.fr/'
         ]);
 
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -141,7 +188,6 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
 
     $matches = $data['hydra:member'];
 
-    // --- CORRECTION DU TITRE UNIQUE POUR L'AFFICHAGE EN COURS ---
     $titre_dynamique = $conf['titre'];
     if (!empty($matches[0]['poule']['name'])) {
         $poule_reelle = $matches[0]['poule']['name'];
@@ -152,6 +198,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
 
     $last_update = date("d/m/Y H:i", filemtime($cache_file));
     $equipe_cible = $conf['equipe_cible'];
+    $mode_calendrier_seul = $conf['mode_calendrier_seul'] ?? false;
 
     $classement = [];
     $matches_formatted = [];
@@ -204,32 +251,35 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
             }
         }
 
-        $teams_init = [
-            $home_team => ['logo' => $match['home']['club']['logo'] ?? '', 'display' => $home_display],
-            $away_team => ['logo' => $match['away']['club']['logo'] ?? '', 'display' => $away_display]
-        ];
+        // On ne calcule le classement virtuel que si on n'est pas en mode "calendrier seul"
+        if (!$mode_calendrier_seul) {
+            $teams_init = [
+                $home_team => ['logo' => $match['home']['club']['logo'] ?? '', 'display' => $home_display],
+                $away_team => ['logo' => $match['away']['club']['logo'] ?? '', 'display' => $away_display]
+            ];
 
-        foreach ($teams_init as $team_raw => $info) {
-            if (!isset($classement[$team_raw])) {
-                $classement[$team_raw] = [
-                    'Logo' => $info['logo'], 'Nom' => $info['display'], 
-                    'Joué' => 0, 'Gagné' => 0, 'Nul' => 0, 'Perdu' => 0, 'BP' => 0, 'BC' => 0, 'Points' => 0, 'Diff' => 0
-                ];
+            foreach ($teams_init as $team_raw => $info) {
+                if (!isset($classement[$team_raw])) {
+                    $classement[$team_raw] = [
+                        'Logo' => $info['logo'], 'Nom' => $info['display'], 
+                        'Joué' => 0, 'Gagné' => 0, 'Nul' => 0, 'Perdu' => 0, 'BP' => 0, 'BC' => 0, 'Points' => 0, 'Diff' => 0
+                    ];
+                }
             }
-        }
 
-        if ($home_score >= 0 && $away_score >= 0) {
-            $classement[$home_team]['Joué']++; $classement[$away_team]['Joué']++;
-            $classement[$home_team]['BP'] += $home_score; $classement[$home_team]['BC'] += $away_score;
-            $classement[$away_team]['BP'] += $away_score; $classement[$away_team]['BC'] += $home_score;
+            if ($home_score >= 0 && $away_score >= 0) {
+                $classement[$home_team]['Joué']++; $classement[$away_team]['Joué']++;
+                $classement[$home_team]['BP'] += $home_score; $classement[$home_team]['BC'] += $away_score;
+                $classement[$away_team]['BP'] += $away_score; $classement[$away_team]['BC'] += $home_score;
 
-            if ($home_score > $away_score) {
-                $classement[$home_team]['Gagné']++; $classement[$home_team]['Points'] += 3; $classement[$away_team]['Perdu']++;
-            } elseif ($home_score < $away_score) {
-                $classement[$away_team]['Gagné']++; $classement[$away_team]['Points'] += 3; $classement[$home_team]['Perdu']++;
-            } else {
-                $classement[$home_team]['Nul']++; $classement[$home_team]['Points']++;
-                $classement[$away_team]['Nul']++; $classement[$away_team]['Points']++;
+                if ($home_score > $away_score) {
+                    $classement[$home_team]['Gagné']++; $classement[$home_team]['Points'] += 3; $classement[$away_team]['Perdu']++;
+                } elseif ($home_score < $away_score) {
+                    $classement[$away_team]['Gagné']++; $classement[$away_team]['Points'] += 3; $classement[$home_team]['Perdu']++;
+                } else {
+                    $classement[$home_team]['Nul']++; $classement[$home_team]['Points']++;
+                    $classement[$away_team]['Nul']++; $classement[$away_team]['Points']++;
+                }
             }
         }
 
@@ -273,13 +323,15 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
         ];
     }
 
-    foreach ($classement as $nom_brut => $vals) { 
-        $classement[$nom_brut]['Diff'] = $vals['BP'] - $vals['BC']; 
+    if (!$mode_calendrier_seul) {
+        foreach ($classement as $nom_brut => $vals) { 
+            $classement[$nom_brut]['Diff'] = $vals['BP'] - $vals['BC']; 
+        }
+        
+        usort($classement, function ($a, $b) { 
+            return ($b['Points'] <=> $a['Points']) ?: ($b['Diff'] <=> $a['Diff']) ?: ($b['BP'] <=> $a['BP']); 
+        });
     }
-    
-    usort($classement, function ($a, $b) { 
-        return ($b['Points'] <=> $a['Points']) ?: ($b['Diff'] <=> $a['Diff']) ?: ($b['BP'] <=> $a['BP']); 
-    });
 
     $liste_phases = array_keys($conf['phases']);
     sort($liste_phases);
@@ -294,6 +346,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
         'phase_active' => $api['phase_id'], 
         'liste_phases' => $liste_phases,
         'saison_active' => $saison,
-        'liste_saisons' => array_keys($config_global['saisons'])
+        'liste_saisons' => array_keys($config_global['saisons']),
+        'mode_calendrier_seul' => $mode_calendrier_seul
     ];
 }

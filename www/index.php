@@ -6,7 +6,6 @@ require_once 'get_data.php';
 $saison_param = $_GET['saison'] ?? null;
 
 // 2. Récupération des données d'accueil de manière centralisée
-// En passant le slug de compétition à null, le moteur sait qu'il doit renvoyer la structure globale
 $data_saison = recupererDonnees(null, null, $saison_param);
 
 $saison_active = $data_saison['saison_active'];
@@ -35,13 +34,11 @@ $saison_master = $config_brut['saison_par_defaut'] ?? '2025_2026';
         <h1>⚽ Suivi des Compétitions</h1>
         <p>Bienvenue sur le portail de suivi des classements en temps réel, alimenté par les données officielles de la FFF.</p>
 
-        <div class="saison-selector" style="margin: 20px 0; background: #f8f9fa; padding: 10px; border-radius: 5px; display: inline-block;">
+        <div class="saison-selector" style="margin: 20px 0 10px 0; background: #f8f9fa; padding: 10px; border-radius: 5px; display: inline-block;">
             <label for="saison" style="font-weight: bold; margin-right: 10px;">Saison :</label>
             <select id="saison" onchange="window.location.href = '?saison=' + this.value" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; color: #1a567d;">
                 <?php foreach ($liste_saisons as $s): 
-                    // Formatage du texte (ex: 2025_2026 devient 2025 - 2026)
                     $label_saison = str_replace('_', ' - ', $s);
-                    // Badge dynamique selon le flag par défaut du JSON
                     $status = ($s === $saison_master) ? ' (En cours)' : ' (Archives)';
                     $selected = ($s === $saison_active) ? 'selected' : '';
                 ?>
@@ -52,10 +49,16 @@ $saison_master = $config_brut['saison_par_defaut'] ?? '2025_2026';
             </select>
         </div>
 
+        <!-- Bouton Calendrier Global placé directement en dessous -->
+        <div style="margin-bottom: 25px;">
+<a href="global.php?saison=<?php echo $saison_active; ?>" style="display: inline-block; padding: 8px 16px; background-color: #1a567d; color: white; font-weight: bold; text-decoration: none; border-radius: 4px;">
+    📅 Calendrier Général <?php echo htmlspecialchars($config_brut['club']['nom_court'] ?? ''); ?>
+</a>
+        </div>
+
         <div class="links-grid">
             <?php foreach ($configs as $slug => $data): ?>
                 <?php 
-                    // On découpe le titre pour essayer de séparer "Catégorie" et "Poule"
                     $titre_complet = $data['titre'];
                     $parts = explode('-', $titre_complet);
                     
@@ -73,7 +76,9 @@ $saison_master = $config_brut['saison_par_defaut'] ?? '2025_2026';
         </div>
         
         <p style="font-size: 0.85em; margin-top: 40px; color: #aaa;">Mise à jour automatique toutes les 2 heures.</p>
-        
+<?php 
+$nom_club_footer = $config_brut['club']['nom_complet'] ?? 'Mon Club'; 
+?>        
         <div class="footer">
             <p>
                 Propulsé par 
