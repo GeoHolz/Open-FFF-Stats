@@ -1,5 +1,6 @@
 <?php
 // get_data.php
+
 function recupererCalendrierGlobal($saison = null) {
     $config_file = "config.json";
     $config_json = @file_get_contents($config_file);
@@ -7,7 +8,7 @@ function recupererCalendrierGlobal($saison = null) {
     
     $config_global = json_decode($config_json, true);
     $saison_active = $saison ?? ($config_global['saison_par_defaut'] ?? '2026_2027');
-    $club_info = $config_global['club'] ?? ['nom_court' => 'MON CLUB', 'nom_complet' => 'Mon Club'];
+    $club_info = $config_global['club'] ?? ['nom_court' => 'MON CLUB', 'nom_complet' => 'Mon Club FC'];
 
     if (!isset($config_global['saisons'][$saison_active])) {
         return [];
@@ -40,6 +41,7 @@ function recupererCalendrierGlobal($saison = null) {
         'matches' => $tous_les_matchs
     ];
 }
+
 function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) {
     // =============================================================
     // 1. CHARGEMENT CONFIGURATION UNIQUE (CENTRALISÉE)
@@ -49,9 +51,10 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
     if (!$config_json) die("Erreur : Fichier de configuration unique '$config_file' introuvable.");
     
     $config_global = json_decode($config_json, true);
+    $club_info = $config_global['club'] ?? ['nom_court' => 'MON CLUB', 'nom_complet' => 'Mon Club FC'];
     
     // Extraction de la saison par défaut si non spécifiée
-    $saison_par_defaut = $config_global['saison_par_defaut'] ?? '2025_2026';
+    $saison_par_defaut = $config_global['saison_par_defaut'] ?? '2026_2027';
     if ($saison === null) {
         $saison = $saison_par_defaut;
     }
@@ -69,6 +72,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
     // Extraction des compétitions pour l'accueil si le slug est vide (Utile pour index.php)
     if ($compet_slug === null) {
         return [
+            'club' => $club_info,
             'saison_active' => $saison,
             'liste_saisons' => array_keys($config_global['saisons']),
             'competitions' => $competitions_saison
@@ -235,6 +239,12 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
             $display_date = date("d/m/Y", strtotime($date_api));
         }
 
+        // Formatage de l'adresse du terrain pour GPS / Google / ICS
+        $adresse = $match['terrain']['address'] ?? '';
+        $cp      = $match['terrain']['zip_code'] ?? '';
+        $ville   = $match['terrain']['city'] ?? '';
+        $adresse_gps = trim(implode(', ', array_filter([$adresse, trim($cp . ' ' . $ville)])));
+
         $google_cal_link = "";
         if ($display_date !== 'REPORTÉ' && !empty($date_pour_tri)) {
             $heure_format = str_replace(['H', 'h'], ':', $match['time'] ?? '00:00');
@@ -242,7 +252,6 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
             if ($timestamp_start) {
                 $start_google = date("Ymd\THis", $timestamp_start);
                 $end_google   = date("Ymd\THis", $timestamp_start + 5400); 
-                $adresse_gps = ($match['terrain']['address'] ?? '') . ', ' . ($match['terrain']['zip_code'] ?? '') . ' ' . ($match['terrain']['city'] ?? '');
                 $google_cal_link = "https://www.google.com/calendar/render?action=TEMPLATE" 
                     . "&text=" . urlencode("Foot : " . $home_display . " vs " . $away_display)
                     . "&dates=" . $start_google . "/" . $end_google
@@ -319,6 +328,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
             ],
             'vainqueur' => ($home_score >= 0) ? (($home_score > $away_score ? $home_team : ($away_score > $home_score ? $away_team : 'Nul'))) : 'À venir',
             'surface' => $match['terrain']['libelle_surface'] ?? '',
+            'address_gps' => $adresse_gps,
             'google_cal_link' => $google_cal_link
         ];
     }
@@ -337,6 +347,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
     sort($liste_phases);
 
     return [
+        'club' => $club_info,
         'titre' => $titre_dynamique,
         'last_update' => $last_update,
         'equipe_cible' => $equipe_cible,

@@ -20,6 +20,15 @@ $poule_vide           = $data['poule_vide'];
 $phase_active         = $data['phase_active'];
 $liste_phases         = $data['liste_phases'];
 $mode_calendrier_seul = $data['mode_calendrier_seul'] ?? false;
+
+// URLs dynamiques pour les différentes plateformes
+$scheme   = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+$host     = $_SERVER['HTTP_HOST'];
+$base_url = preg_replace('#^https?://#', '', $scheme . '://' . $host);
+
+$ics_http_url   = $scheme . '://' . $host . '/ics.php?compet=' . $compet_slug . '&saison=' . $saison_demandee;
+$ics_webcal_url = 'webcal://' . $base_url . '/ics.php?compet=' . $compet_slug . '&saison=' . $saison_demandee;
+$google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics_http_url);
 ?>
 
 <!DOCTYPE html>
@@ -79,7 +88,7 @@ $mode_calendrier_seul = $data['mode_calendrier_seul'] ?? false;
     .phase-tabs {
         display: flex;
         gap: 10px;
-        margin: 15px 0 20px 0;
+        margin: 15px 0 10px 0;
     }
 
     .phase-tab {
@@ -102,6 +111,44 @@ $mode_calendrier_seul = $data['mode_calendrier_seul'] ?? false;
         background: #1a567d;
         color: white;
         border-color: #1a567d;
+    }
+
+    /* --- STYLE DU MENU DÉROULANT CALENDRIER --- */
+    details.sync-accordion {
+        margin: 15px 0 20px 0;
+    }
+
+    details.sync-accordion summary {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 14px;
+        background-color: #1a567d;
+        color: white;
+        font-weight: bold;
+        font-size: 0.85em;
+        border-radius: 5px;
+        cursor: pointer;
+        user-select: none;
+        list-style: none;
+    }
+
+    details.sync-accordion summary::-webkit-details-marker {
+        display: none;
+    }
+
+    details.sync-accordion summary:hover {
+        background-color: #134261;
+    }
+
+    .sync-box {
+        margin-top: 10px;
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid #e9ecef;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
     @media screen and (max-width: 600px) {
@@ -158,6 +205,30 @@ $mode_calendrier_seul = $data['mode_calendrier_seul'] ?? false;
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
+
+    <!-- BLOC D'ABONNEMENT PLIABLE -->
+    <details class="sync-accordion">
+        <summary>🗓️ Synchroniser avec votre calendrier ▼</summary>
+        <div class="sync-box">
+            <!-- Option 1 : Google Calendar (Android / PC) -->
+            <a href="<?php echo $google_sub_url; ?>" target="_blank"
+               style="display: inline-flex; align-items: center; padding: 6px 12px; background-color: #4285F4; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.85em;">
+                🌐 Google Calendar
+            </a>
+
+            <!-- Option 2 : Apple / Webcal (iPhone, iPad, Mac) -->
+            <a href="<?php echo $ics_webcal_url; ?>" 
+               style="display: inline-flex; align-items: center; padding: 6px 12px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.85em;">
+                📱 Apple / iOS
+            </a>
+
+            <!-- Option 3 : Fichier .ics direct (Outlook / Fichier brut) -->
+            <a href="<?php echo $ics_http_url; ?>" download 
+               style="display: inline-flex; align-items: center; padding: 6px 12px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.85em;">
+                📥 Télécharger (.ics)
+            </a>
+        </div>
+    </details>
 
     <?php if (!$mode_calendrier_seul): ?>
         <!-- 1. TABLEAU DU CLASSEMENT -->
@@ -332,11 +403,13 @@ $mode_calendrier_seul = $data['mode_calendrier_seul'] ?? false;
             </table>
         </div>
     <?php endif; ?>
-<?php 
-$nom_club_footer = $config_global['club']['nom_complet'] ?? $equipe_cible; 
-?>
+
+    <?php 
+    $config_brut = json_decode(@file_get_contents('config.json'), true);
+    $nom_club_footer = $config_brut['club']['nom_complet'] ?? $equipe_cible; 
+    ?>
     <div class="footer">
-        <p>Propulsé par <a href="https://github.com/GeoHolz/Open-FFF-Stats/" target="_blank">Open-FFF-Stats</a> • ES Weppes</p>
+        <p>Propulsé par <a href="https://github.com/GeoHolz/Open-FFF-Stats/" target="_blank">Open-FFF-Stats</a> • <?php echo htmlspecialchars($nom_club_footer); ?></p>
     </div>
     </div>
 </body>
