@@ -1,5 +1,6 @@
 <?php
 // get_data.php
+date_default_timezone_set('Europe/Paris');
 
 function recupererCalendrierGlobal($saison = null) {
     $config_file = "config.json";
@@ -223,9 +224,10 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
         $home_display = $home_num ? $home_team . ' ' . $home_num : $home_team;
         $away_display = $away_num ? $away_team . ' ' . $away_num : $away_team;
 
-        $is_forfait_home = in_array($match['home_resu'] ?? '', ['FM', 'FG']);
-        $is_forfait_away = in_array($match['away_resu'] ?? '', ['FM', 'FG']);
-        $is_forfait = ($is_forfait_home || $is_forfait_away);
+        // --- DEFINITION DU FORFAIT PLACEE ICI POUR ÉVITER LES WARNINGS ---
+        $is_forfeit_home = in_array($match['home_resu'] ?? '', ['FM', 'FG']);
+        $is_forfeit_away = in_array($match['away_resu'] ?? '', ['FM', 'FG']);
+        $is_forfeit = ($is_forfeit_home || $is_forfeit_away);
 
         $date_api = $match['date'] ?? null;
         $status_label = $match['status_label'] ?? '';
@@ -258,6 +260,15 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
                     . "&location=" . urlencode($adresse_gps)
                     . "&ctz=Europe/Paris";
             }
+        }
+
+        // --- GENERATION DU LIEN DE LA FICHE DU MATCH FFF ---
+        $ma_no = $match['ma_no'] ?? null;
+        $match_url = null;
+        if ($ma_no) {
+            $slug_home = strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $home_team), '-'));
+            $slug_away = strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $away_team), '-'));
+            $match_url = "https://epreuves.fff.fr/competition/match/{$ma_no}-{$slug_home}-{$slug_away}/match";
         }
 
         // On ne calcule le classement virtuel que si on n'est pas en mode "calendrier seul"
@@ -319,17 +330,18 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
             'home_logo' => $match['home']['club']['logo'] ?? '',
             'away_logo' => $match['away']['club']['logo'] ?? '',
             'score_txt' => ($home_score >= 0) ? "$home_score - $away_score" : "vs",
-            'is_forfeit' => $is_forfait,
+            'is_forfeit' => $is_forfeit,
             'style_home' => $style_home,
             'style_away' => $style_away,
             'status' => [
-                'label' => ($home_score >= 0) ? ($is_forfait ? 'Forfait' : 'Terminé') : (($display_date === 'REPORTÉ' ? 'Reporté' : 'À venir')), 
+                'label' => ($home_score >= 0) ? ($is_forfeit ? 'Forfait' : 'Terminé') : (($display_date === 'REPORTÉ' ? 'Reporté' : 'À venir')), 
                 'class' => ($home_score >= 0) ? 'badge-finished' : (($display_date === 'REPORTÉ') ? 'badge-postponed' : 'badge-upcoming')
             ],
             'vainqueur' => ($home_score >= 0) ? (($home_score > $away_score ? $home_team : ($away_score > $home_score ? $away_team : 'Nul'))) : 'À venir',
             'surface' => $match['terrain']['libelle_surface'] ?? '',
             'address_gps' => $adresse_gps,
-            'google_cal_link' => $google_cal_link
+            'google_cal_link' => $google_cal_link,
+            'match_url' => $match_url
         ];
     }
 

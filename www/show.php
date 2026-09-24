@@ -138,6 +138,7 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
                     <th class="team-wrap" style="text-align: right;">Domicile</th>
                     <th style="text-align: center;">Score</th>
                     <th class="team-wrap" style="text-align: left;">Extérieur</th>
+                    <th style="text-align: center;">FFF</th>
                 </tr>
             </thead>
             <tbody>
@@ -171,6 +172,16 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
                         <?php if ($m['away_logo']): ?><img src="<?php echo $m['away_logo']; ?>" style="width:20px; vertical-align:middle; margin-right:4px;"><?php endif; ?>
                         <?php echo $m['away_display']; ?> 
                     </td>
+                    <td style="text-align: center;">
+                        <?php if (!empty($m['match_url'])): ?>
+                            <a href="<?php echo htmlspecialchars($m['match_url']); ?>" 
+                               target="_blank" 
+                               title="Fiche officielle du match" 
+                               style="text-decoration: none; font-size: 1.1em;">🔗</a>
+                        <?php else: ?>
+                            -
+                        <?php endif; ?>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -196,6 +207,7 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
                         <th class="team-wrap">Domicile</th>
                         <th>Score</th>
                         <th class="team-wrap">Extérieur</th>
+                        <th style="text-align: center;">FFF</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -258,6 +270,17 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
                         <td class="team-wrap" style="text-align: left; <?php echo $style_away_all; ?>">
                             <?php if ($m['away_logo']): ?><img src="<?php echo $m['away_logo']; ?>" style="width:20px; vertical-align:middle; margin-right:4px;"><?php endif; ?>
                             <?php echo $away_name_html; ?>
+                        </td>
+                        
+                        <td style="text-align: center;">
+                            <?php if (!empty($m['match_url'])): ?>
+                                <a href="<?php echo htmlspecialchars($m['match_url']); ?>" 
+                                   target="_blank" 
+                                   title="Fiche officielle du match" 
+                                   style="text-decoration: none; font-size: 1.1em;">🔗</a>
+                            <?php else: ?>
+                                -
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>

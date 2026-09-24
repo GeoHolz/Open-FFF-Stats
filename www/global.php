@@ -44,6 +44,7 @@ $nom_club_complet = $donnees_globales['club']['nom_complet'] ?? 'Mon Club';
                             <th class="team-wrap" style="text-align: right;">Domicile</th>
                             <th style="text-align: center;">Score</th>
                             <th class="team-wrap" style="text-align: left;">Extérieur</th>
+                            <th style="text-align: center;">FFF</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -59,7 +60,7 @@ $nom_club_complet = $donnees_globales['club']['nom_complet'] ?? 'Mon Club';
                         $previous_date = $m['raw_date'];
 
                         // Classe CSS spécifique à la catégorie (ex: cat-u10)
-                        $cat_class = 'cat-' . strtolower($m['categorie']);
+                        $cat_class = 'cat-' . strtolower(trim($m['categorie']));
                     ?>
                         <tr style="<?php echo $current_bg; ?>">
                             <!-- Colonne Catégorie + Date + Heure -->
@@ -98,6 +99,18 @@ $nom_club_complet = $donnees_globales['club']['nom_complet'] ?? 'Mon Club';
                                     <img src="<?php echo $m['away_logo']; ?>" style="width:20px; vertical-align:middle; margin-right:4px;">
                                 <?php endif; ?>
                                 <?php echo $m['away_display']; ?> 
+                            </td>
+
+                            <!-- Colonne Lien FFF -->
+                            <td style="text-align: center;">
+                                <?php if (!empty($m['match_url'])): ?>
+                                    <a href="<?php echo htmlspecialchars($m['match_url']); ?>" 
+                                       target="_blank" 
+                                       title="Fiche officielle du match" 
+                                       style="text-decoration: none; font-size: 1.1em;">🔗</a>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
