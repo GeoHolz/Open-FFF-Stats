@@ -164,7 +164,9 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
                     </td>
                     <td style="text-align: center; font-weight: bold; background:#fdfdfd;">
                         <?php echo $m['score_txt']; ?>
-                        <?php if ($m['is_forfeit']): ?>
+                        <?php if (!empty($m['is_forfeit_general'])): ?>
+                            <br><small style="color:red; font-size:0.7em; display:block;">FORFAIT GÉNÉRAL</small>
+                        <?php elseif (!empty($m['is_forfeit'])): ?>
                             <br><small style="color:red; font-size:0.7em; display:block;">FORFAIT</small>
                         <?php endif; ?>
                     </td>
@@ -260,10 +262,12 @@ $google_sub_url = "https://www.google.com/calendar/render?cid=" . urlencode($ics
                             <?php if ($m['home_logo']): ?><img src="<?php echo $m['home_logo']; ?>" style="width:20px; vertical-align:middle; margin-left:4px;"><?php endif; ?>
                         </td>
                         
-                        <td style="font-weight: bold; text-align:center;">
+                        <td style="text-align: center; font-weight: bold; background:#fdfdfd;">
                             <?php echo $m['score_txt']; ?>
-                            <?php if ($m['is_forfeit']): ?>
-                                <div style="color:red; font-size:0.7em; font-weight:normal;">Forfait</div>
+                            <?php if (!empty($m['is_forfeit_general'])): ?>
+                                <br><small style="color:red; font-size:0.7em; display:block;">FORFAIT GÉNÉRAL</small>
+                            <?php elseif (!empty($m['is_forfeit'])): ?>
+                                <br><small style="color:red; font-size:0.7em; display:block;">FORFAIT</small>
                             <?php endif; ?>
                         </td>
                         

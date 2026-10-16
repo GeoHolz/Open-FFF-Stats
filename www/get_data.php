@@ -112,7 +112,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
     // =============================================================
     // 2. VÉRIFICATION DU CACHE & LOGIQUE DE GEL
     // =============================================================
-    $duree_cache = 2 * 3600; 
+    $duree_cache = 14400; // Cache de 4 heures
     $doit_telecharger = false;
 
     // RÈGLE D'OR : On ne télécharge QUE si c'est la saison en cours
@@ -207,14 +207,13 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
 
     $classement = [];
     $matches_formatted = [];
+    $today_date = date('Y-m-d');
 
     foreach ($matches as $match) {
         if (!isset($match['home']) || !isset($match['away'])) continue;
 
         $home_team = $match['home']['short_name'] ?? 'Inconnu';
         $away_team = $match['away']['short_name'] ?? 'Inconnu';
-        $home_score = isset($match['home_score']) ? (int)$match['home_score'] : -1;
-        $away_score = isset($match['away_score']) ? (int)$match['away_score'] : -1;
         
         $home_code = $match['home']['code'] ?? 0;
         $away_code = $match['away']['code'] ?? 0;
@@ -224,10 +223,10 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
         $home_display = $home_num ? $home_team . ' ' . $home_num : $home_team;
         $away_display = $away_num ? $away_team . ' ' . $away_num : $away_team;
 
-        // --- DEFINITION DU FORFAIT PLACEE ICI POUR ÉVITER LES WARNINGS ---
-        $is_forfeit_home = in_array($match['home_resu'] ?? '', ['FM', 'FG']);
-        $is_forfeit_away = in_array($match['away_resu'] ?? '', ['FM', 'FG']);
-        $is_forfeit = ($is_forfeit_home || $is_forfeit_away);
+        // --- DÉTECTION FINE DES FORFAITS ---
+        $is_forfeit_home = (($match['home_is_forfeit'] ?? 'N') === 'O') || in_array($match['home_resu'] ?? '', ['FM', 'FG']);
+        $is_forfeit_away = (($match['away_is_forfeit'] ?? 'N') === 'O') || in_array($match['away_resu'] ?? '', ['FM', 'FG']);
+        $is_forfeit      = ($is_forfeit_home || $is_forfeit_away);
 
         $date_api = $match['date'] ?? null;
         $status_label = $match['status_label'] ?? '';
@@ -239,6 +238,31 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
             if (!empty($match['initial_date'])) $date_pour_tri = $match['initial_date'];
         } else {
             $display_date = date("d/m/Y", strtotime($date_api));
+        }
+
+        $raw_date_str = substr($date_pour_tri ?? '', 0, 10);
+
+        // --- GESTION DES SCORES & FORFAITS GÉNÉRAUX DYNAMIQUES ---
+        $raw_home_score = $match['home_score'] ?? null;
+        $home_score = isset($match['home_score']) ? (int)$match['home_score'] : -1;
+        $away_score = isset($match['away_score']) ? (int)$match['away_score'] : -1;
+
+        $is_forfeit_general = false;
+
+        // Si l'équipe est en forfait général (status "E" et pas de score brut)
+        if (($match['status'] ?? '') === 'E' && $raw_home_score === null && $is_forfeit) {
+            $is_forfeit_general = true;
+
+            // RÈGLE : On n'applique le 3-0 et le comptage au classement QUE si la date du match est arrivée/dépassée
+            if ($raw_date_str <= $today_date) {
+                if ($is_forfeit_home) {
+                    $home_score = 0;
+                    $away_score = 3;
+                } else {
+                    $home_score = 3;
+                    $away_score = 0;
+                }
+            }
         }
 
         // Formatage de l'adresse du terrain pour GPS / Google / ICS
@@ -262,7 +286,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
             }
         }
 
-        // --- GENERATION DU LIEN DE LA FICHE DU MATCH FFF ---
+        // --- GÉNÉRATION DU LIEN DE LA FICHE DU MATCH FFF ---
         $ma_no = $match['ma_no'] ?? null;
         $match_url = null;
         if ($ma_no) {
@@ -319,7 +343,7 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
         }
 
         $matches_formatted[] = [
-            'raw_date' => substr($date_pour_tri ?? '', 0, 10),
+            'raw_date' => $raw_date_str,
             'display_date' => $display_date,
             'heure' => $match['time'] ?? '',
             'journee' => $match['poule_journee']['name'] ?? '',
@@ -331,10 +355,11 @@ function recupererDonnees($compet_slug, $phase_demandee = null, $saison = null) 
             'away_logo' => $match['away']['club']['logo'] ?? '',
             'score_txt' => ($home_score >= 0) ? "$home_score - $away_score" : "vs",
             'is_forfeit' => $is_forfeit,
+            'is_forfeit_general' => $is_forfeit_general,
             'style_home' => $style_home,
             'style_away' => $style_away,
             'status' => [
-                'label' => ($home_score >= 0) ? ($is_forfeit ? 'Forfait' : 'Terminé') : (($display_date === 'REPORTÉ' ? 'Reporté' : 'À venir')), 
+                'label' => ($home_score >= 0) ? ($is_forfeit_general ? 'Forfait Général' : ($is_forfeit ? 'Forfait' : 'Terminé')) : (($display_date === 'REPORTÉ' ? 'Reporté' : 'À venir')), 
                 'class' => ($home_score >= 0) ? 'badge-finished' : (($display_date === 'REPORTÉ') ? 'badge-postponed' : 'badge-upcoming')
             ],
             'vainqueur' => ($home_score >= 0) ? (($home_score > $away_score ? $home_team : ($away_score > $home_score ? $away_team : 'Nul'))) : 'À venir',
